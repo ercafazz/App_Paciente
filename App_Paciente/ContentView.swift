@@ -1,41 +1,45 @@
 import SwiftUI
 
 struct ContentView: View {
-    // Memoria del teléfono para recordar en qué paso va el paciente
+    // Memoria del teléfono para todo el flujo de Onboarding
     @AppStorage("isAuthenticated") var isAuthenticated = false
-    @AppStorage("datosCompletados") var datosCompletados = false // NUEVA MEMORIA
+    @AppStorage("datosCompletados") var datosCompletados = false
     @AppStorage("permisosCompletados") var permisosCompletados = false
+    @AppStorage("tutorialCompletado") var tutorialCompletado = false // NUEVA MEMORIA
     
     var body: some View {
         if !isAuthenticated {
-            // Paso 1: Autenticación (Login / Registro)
+            // Paso 1: Autenticación
             AutenticacionView(isAuthenticated: $isAuthenticated)
             
         } else if !datosCompletados {
-            // Paso 2: Pantalla de completar datos (Screen 3)
+            // Paso 2: Pantalla de completar datos
             CompletarDatosView(datosCompletados: $datosCompletados)
             
         } else if !permisosCompletados {
-            // Paso 3: Permisos del Watch (Screen 4)
+            // Paso 3: Permisos del Watch
             PermisosView(permisosCompletados: $permisosCompletados)
             
+        } else if !tutorialCompletado {
+            // Paso 4: Tutorial de Complications (NUEVO)
+            ComplicacionOnboardingView(tutorialCompletado: $tutorialCompletado)
+            
         } else {
-            // Paso 4: Todo listo. (Aquí irá el Dashboard real)
+            // Paso 5: Todo listo. (Dashboard real)
             VStack {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 60))
                     .foregroundColor(.accentColor)
-                
                 Text("¡Onboarding Completado!")
                     .font(.title)
                     .bold()
                     .padding()
                 
-                // Botón temporal para resetear toda la app y probar desde cero
                 Button("Resetear Prueba") {
                     isAuthenticated = false
                     datosCompletados = false
                     permisosCompletados = false
+                    tutorialCompletado = false
                 }
                 .padding(.top, 40)
                 .foregroundColor(.red)
