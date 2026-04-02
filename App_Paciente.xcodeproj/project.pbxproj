@@ -14,22 +14,9 @@
 		944486432F78AB9E00081425 /* App_Paciente.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App_Paciente.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		944BC1842F7CE2A600F0C720 /* Exceptions for "App_Paciente" folder in "App_Paciente" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"App-Paciente-Info.plist",
-			);
-			target = 944486422F78AB9E00081425 /* App_Paciente */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		944486452F78AB9E00081425 /* App_Paciente */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				944BC1842F7CE2A600F0C720 /* Exceptions for "App_Paciente" folder in "App_Paciente" target */,
-			);
 			path = App_Paciente;
 			sourceTree = "<group>";
 		};
