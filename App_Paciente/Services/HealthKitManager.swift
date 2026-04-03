@@ -117,7 +117,7 @@ final class HealthKitManager: @unchecked Sendable {
 
             healthStore.execute(query)
 
-            healthStore.enableBackgroundDelivery(for: tipo, frequency: .hourly) { exito, error in
+            healthStore.enableBackgroundDelivery(for: tipo, frequency: .immediate) { exito, error in
                 if exito {
                     print("[HealthKitManager] ✅ Background delivery activado para: \(tipo.identifier)")
                 } else if let error {

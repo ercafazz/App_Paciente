@@ -523,7 +523,10 @@ struct AutenticacionView: View {
 
             print("[AutenticacionView] ✅ Inicio de sesión exitoso para: \(session.user.email ?? correo)")
 
-            // 2. Verificar si el perfil ya existe en la BD
+            // 2. Conectar la tubería de HealthKit con el ID del paciente
+            HealthKitManager.shared.idPaciente = session.user.id
+
+            // 3. Verificar si el perfil ya existe en la BD
             let response = try? await SupabaseManager.shared.client
                 .from("perfiles")
                 .select()
@@ -568,6 +571,10 @@ struct AutenticacionView: View {
             )
 
             print("[AutenticacionView] ✅ Registro exitoso para: \(response.user.email ?? correo)")
+
+            // Conectar la tubería de HealthKit con el ID del nuevo paciente
+            HealthKitManager.shared.idPaciente = response.user.id
+
             isAuthenticated = true
 
         } catch {

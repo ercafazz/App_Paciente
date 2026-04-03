@@ -44,6 +44,13 @@ struct ContentView: View {
         .task {
             await verificarSesion()
         }
+        .onChange(of: tutorialCompletado) { _, completado in
+            // Cuando un usuario nuevo termina el onboarding, activar la tubería de HealthKit
+            if completado {
+                HealthKitManager.shared.configurarObservadores()
+                print("[ContentView] ✅ Onboarding finalizado. Observadores de HealthKit activados.")
+            }
+        }
     }
 
     // MARK: - Splash de carga
@@ -79,7 +86,10 @@ struct ContentView: View {
 
         print("[ContentView] Sesión activa encontrada para: \(session.user.email ?? "sin email")")
 
-        // 2. Verificar si el perfil existe en la BD
+        // 2. Conectar la tubería de HealthKit con el ID del paciente
+        HealthKitManager.shared.idPaciente = session.user.id
+
+        // 3. Verificar si el perfil existe en la BD
         let perfilExiste = (try? await SupabaseManager.shared.client
             .from("perfiles")
             .select()
@@ -92,12 +102,16 @@ struct ContentView: View {
             datosCompletados = true
             permisosCompletados = true
             tutorialCompletado = true
+
+            // 4. Activar observadores de HealthKit (la tubería de datos completa)
+            HealthKitManager.shared.configurarObservadores()
+            print("[ContentView] ✅ Observadores de HealthKit activados.")
         } else {
             print("[ContentView] ⚠️ Perfil no encontrado. El usuario deberá completar sus datos.")
             datosCompletados = false
         }
 
-        // 3. En ambos casos, el usuario está autenticado
+        // 5. En ambos casos, el usuario está autenticado
         isAuthenticated = true
     }
 }

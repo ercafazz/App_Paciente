@@ -181,6 +181,7 @@ struct AjustesView: View {
             Task {
                 do {
                     try await SupabaseManager.shared.client.auth.signOut()
+                    HealthKitManager.shared.idPaciente = nil
                     isAuthenticated = false
                     datosCompletados = false
                     permisosCompletados = false
