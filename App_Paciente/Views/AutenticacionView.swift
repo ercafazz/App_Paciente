@@ -25,6 +25,11 @@ struct AutenticacionView: View {
     /// Se pone en `true` cuando el usuario inicia sesión o se registra exitosamente.
     @Binding var isAuthenticated: Bool
 
+    /// Memoria persistente del onboarding — permite saltar todo el flujo si el perfil ya existe.
+    @AppStorage("datosCompletados") var datosCompletados = false
+    @AppStorage("permisosCompletados") var permisosCompletados = false
+    @AppStorage("tutorialCompletado") var tutorialCompletado = false
+
     // MARK: - Estado
 
     @State private var modoActual: ModoAuth = .inicioSesion
@@ -503,18 +508,45 @@ struct AutenticacionView: View {
     // MARK: - Lógica de Autenticación (Supabase Auth)
 
     /// Inicia sesión con correo y contraseña usando Supabase Auth.
+    /// Tras autenticar, verifica si el perfil ya existe en la tabla `perfiles`
+    /// para decidir si el usuario debe pasar por "Completar Datos" o ir directo al Dashboard.
     private func iniciarSesion() async {
         estaCargando = true
         defer { estaCargando = false }
 
         do {
+            // 1. Autenticar con Supabase
             let session = try await SupabaseManager.shared.client.auth.signIn(
                 email: correo.trimmingCharacters(in: .whitespaces),
                 password: contrasena
             )
 
             print("[AutenticacionView] ✅ Inicio de sesión exitoso para: \(session.user.email ?? correo)")
-            isAuthenticated = true
+
+            // 2. Verificar si el perfil ya existe en la BD
+            let response = try? await SupabaseManager.shared.client
+                .from("perfiles")
+                .select()
+                .eq("id", value: session.user.id)
+                .single()
+                .execute()
+
+            if response != nil {
+                // Perfil encontrado → saltar "Completar Datos"
+                print("[AutenticacionView] ✅ Perfil existente encontrado. Saltando onboarding completo.")
+                await MainActor.run {
+                    datosCompletados = true
+                    permisosCompletados = true
+                    tutorialCompletado = true
+                    isAuthenticated = true
+                }
+            } else {
+                // Perfil no encontrado → el usuario deberá completar sus datos
+                print("[AutenticacionView] ⚠️ Perfil no encontrado. Redirigiendo a Completar Datos.")
+                await MainActor.run {
+                    isAuthenticated = true
+                }
+            }
 
         } catch {
             mensajeError = mapearErrorAuth(error)

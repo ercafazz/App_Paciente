@@ -15,6 +15,9 @@ struct AjustesView: View {
 
     @Environment(\.dismiss) var dismiss
     @AppStorage("isAuthenticated") var isAuthenticated = false
+    @AppStorage("datosCompletados") var datosCompletados = false
+    @AppStorage("permisosCompletados") var permisosCompletados = false
+    @AppStorage("tutorialCompletado") var tutorialCompletado = false
 
     // MARK: - Datos Mock
 
@@ -179,6 +182,9 @@ struct AjustesView: View {
                 do {
                     try await SupabaseManager.shared.client.auth.signOut()
                     isAuthenticated = false
+                    datosCompletados = false
+                    permisosCompletados = false
+                    tutorialCompletado = false
                     dismiss()
                     print("[AjustesView] ✅ Sesión cerrada exitosamente.")
                 } catch {

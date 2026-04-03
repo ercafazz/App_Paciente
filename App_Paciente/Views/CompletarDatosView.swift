@@ -6,6 +6,35 @@
 //
 
 import SwiftUI
+import Supabase
+import Auth
+import PostgREST
+
+// MARK: - Modelo para INSERT en tabla `perfiles`
+
+/// Estructura que mapea exactamente a las columnas de la tabla `perfiles` en Supabase.
+/// Solo se usa para el INSERT inicial tras el registro, por eso conforma a `Encodable`.
+struct PerfilInsert: Encodable {
+    let id: UUID
+    let rol: String
+    let nombreCompleto: String
+    let correoElectronico: String
+    let cedula: String
+    let telefono: String
+    let fechaNacimiento: String
+    let sexoBiologico: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case rol
+        case nombreCompleto = "nombre_completo"
+        case correoElectronico = "correo_electronico"
+        case cedula
+        case telefono
+        case fechaNacimiento = "fecha_nacimiento"
+        case sexoBiologico = "sexo_biologico"
+    }
+}
 
 /// Pantalla de onboarding para capturar los datos demográficos y médicos
 /// del paciente tras el registro. Corresponde a la Screen 3 del diseño de Tuēri.
@@ -32,6 +61,7 @@ struct CompletarDatosView: View {
     @State private var anio = ""
     @State private var sexoSeleccionado: SexoBiologico?
     @State private var isSubmitting = false
+    @State private var nombreUsuario = "Usuario"
 
     // Alertas
     @State private var mostrarAlertaError = false
@@ -68,6 +98,14 @@ struct CompletarDatosView: View {
         } message: {
             Text(mensajeError)
         }
+        .task {
+            // Cargar el nombre del usuario desde los metadatos de Auth
+            if let session = try? await SupabaseManager.shared.client.auth.session,
+               let nombre = session.user.userMetadata["nombre_completo"]?.stringValue {
+                let primerNombre = nombre.components(separatedBy: " ").first ?? nombre
+                nombreUsuario = primerNombre
+            }
+        }
     }
 
     // MARK: - Encabezado (Logo + Branding)
@@ -98,7 +136,7 @@ struct CompletarDatosView: View {
 
     private var seccionTitulo: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("¡Casi listo, Usuario!")
+            Text("¡Casi listo, \(nombreUsuario)!")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(grisTitulo)
 
@@ -317,28 +355,76 @@ struct CompletarDatosView: View {
         return cedulaValida && telefonoValido && fechaValida && sexoValido
     }
 
-    // MARK: - Lógica (Mock)
+    // MARK: - Lógica (Supabase INSERT)
 
-    /// Simula el guardado del perfil del paciente. Reemplazar con Supabase.
+    /// Obtiene la sesión actual, construye el perfil y lo inserta en la tabla `perfiles`.
     private func guardarDatos() async {
         isSubmitting = true
         defer { isSubmitting = false }
 
         do {
-            // Mock: simula latencia de red
-            try await Task.sleep(for: .seconds(2))
+            // 1. Obtener sesión y datos del usuario autenticado
+            let session = try await SupabaseManager.shared.client.auth.session
+            let userId = session.user.id
+            let email = session.user.email ?? ""
 
-            print("[CompletarDatosView] ✅ Perfil completado:")
+            // 2. Extraer el nombre guardado en metadatos durante el signUp
+            let nombre: String
+            if let metaNombre = session.user.userMetadata["nombre_completo"]?.stringValue {
+                nombre = metaNombre
+            } else {
+                nombre = "Paciente"
+            }
+
+            // 3. Formatear fecha a YYYY-MM-DD (requerido por SQL date)
+            let diaPad = dia.count == 1 ? "0\(dia)" : dia
+            let mesPad = mes.count == 1 ? "0\(mes)" : mes
+            let fechaFormateada = "\(anio)-\(mesPad)-\(diaPad)"
+
+            // 4. Construir el perfil
+            let perfilInsert = PerfilInsert(
+                id: userId,
+                rol: "paciente",
+                nombreCompleto: nombre,
+                correoElectronico: email,
+                cedula: cedula.trimmingCharacters(in: .whitespaces),
+                telefono: telefono.trimmingCharacters(in: .whitespaces),
+                fechaNacimiento: fechaFormateada,
+                sexoBiologico: sexoSeleccionado?.rawValue ?? ""
+            )
+
+            // 5. INSERT en Supabase
+            try await SupabaseManager.shared.client
+                .from("perfiles")
+                .insert(perfilInsert)
+                .execute()
+
+            print("[CompletarDatosView] ✅ Perfil insertado en Supabase:")
+            print("  ID: \(userId)")
+            print("  Nombre: \(nombre)")
             print("  Cédula: \(cedula)")
-            print("  Teléfono: \(telefono)")
-            print("  Fecha: \(dia)/\(mes)/\(anio)")
+            print("  Fecha: \(fechaFormateada)")
             print("  Sexo: \(sexoSeleccionado?.rawValue ?? "N/A")")
 
-            datosCompletados = true
+            // 6. Avanzar en el onboarding (MainActor ya que estamos en contexto de View)
+            await MainActor.run {
+                datosCompletados = true
+            }
 
         } catch {
-            mensajeError = "No se pudieron guardar los datos: \(error.localizedDescription)"
+            let descripcion = error.localizedDescription.lowercased()
+
+            if descripcion.contains("duplicate") || descripcion.contains("already exists")
+                || descripcion.contains("unique") {
+                mensajeError = "Ya existe un perfil con esta cédula. Si crees que es un error, contacta a soporte."
+            } else if descripcion.contains("network") || descripcion.contains("offline") {
+                mensajeError = "Sin conexión a internet. Verifica tu red e intenta de nuevo."
+            } else {
+                mensajeError = "No se pudo guardar el perfil: \(error.localizedDescription)"
+            }
+
             mostrarAlertaError = true
+            print("[CompletarDatosView] ❌ Error al insertar perfil: \(error)")
         }
     }
 }
