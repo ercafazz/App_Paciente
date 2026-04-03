@@ -19,12 +19,14 @@ actor SupabaseManager {
 
     // MARK: - Credenciales (llenar con tus valores de Supabase)
 
-    private static let supabaseURL: String = ""
-    private static let supabaseAnonKey: String = ""
+    private static let supabaseURL: String = "https://aqopgqcpdmbmgkxmgvoy.supabase.co"
+    private static let supabaseAnonKey: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxb3BncWNwZG1ibWdreG1ndm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjcxNDIsImV4cCI6MjA5MDQwMzE0Mn0.O3Lt-rDU_658DvJ5zR6rxu6pg-j7HNsbLZ8gOODtZcQ"
 
     // MARK: - Cliente de Supabase
 
-    private let client: SupabaseClient
+    /// Cliente expuesto de solo lectura para que otras capas (Auth, Storage, etc.)
+    /// puedan acceder directamente. El envío de lotes sigue usando `enviarLote()`.
+    let client: SupabaseClient
 
     // MARK: - Inicialización
 

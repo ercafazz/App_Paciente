@@ -6,7 +6,8 @@
 //
 
 import SwiftUI
-
+import Supabase
+import Auth
 /// Pantalla unificada de autenticación que combina Inicio de Sesión y Registro
 /// en un solo componente con pestañas interactivas.
 /// Corresponde a las Screens 1 y 2 del diseño de Tuēri.
@@ -499,42 +500,86 @@ struct AutenticacionView: View {
         }
     }
 
-    // MARK: - Lógica de Autenticación (Mocks)
+    // MARK: - Lógica de Autenticación (Supabase Auth)
 
-    /// Simula un inicio de sesión. Reemplazar con Supabase Auth.
+    /// Inicia sesión con correo y contraseña usando Supabase Auth.
     private func iniciarSesion() async {
         estaCargando = true
         defer { estaCargando = false }
 
         do {
-            // Mock: simula latencia de red
-            try await Task.sleep(for: .seconds(2))
+            let session = try await SupabaseManager.shared.client.auth.signIn(
+                email: correo.trimmingCharacters(in: .whitespaces),
+                password: contrasena
+            )
 
-            print("[AutenticacionView] ✅ Inicio de sesión exitoso para: \(correo)")
+            print("[AutenticacionView] ✅ Inicio de sesión exitoso para: \(session.user.email ?? correo)")
             isAuthenticated = true
 
         } catch {
-            mensajeError = "No se pudo iniciar sesión: \(error.localizedDescription)"
+            mensajeError = mapearErrorAuth(error)
             mostrarAlertaError = true
+            print("[AutenticacionView] ❌ Error de login: \(error)")
         }
     }
 
-    /// Simula un registro de usuario. Reemplazar con Supabase Auth.
+    /// Registra un nuevo usuario con correo y contraseña usando Supabase Auth.
     private func registrarUsuario() async {
         estaCargando = true
         defer { estaCargando = false }
 
         do {
-            // Mock: simula latencia de red
-            try await Task.sleep(for: .seconds(2))
+            let response = try await SupabaseManager.shared.client.auth.signUp(
+                email: correo.trimmingCharacters(in: .whitespaces),
+                password: contrasena,
+                data: ["nombre_completo": .string(nombreCompleto.trimmingCharacters(in: .whitespaces))]
+            )
 
-            print("[AutenticacionView] ✅ Registro exitoso para: \(nombreCompleto) (\(correo))")
+            print("[AutenticacionView] ✅ Registro exitoso para: \(response.user.email ?? correo)")
             isAuthenticated = true
 
         } catch {
-            mensajeError = "No se pudo crear la cuenta: \(error.localizedDescription)"
+            mensajeError = mapearErrorAuth(error)
             mostrarAlertaError = true
+            print("[AutenticacionView] ❌ Error de registro: \(error)")
         }
+    }
+
+    // MARK: - Mapeo de errores legible
+
+    /// Traduce errores de Supabase Auth a mensajes amigables en español.
+    private func mapearErrorAuth(_ error: Error) -> String {
+        let descripcion = error.localizedDescription.lowercased()
+
+        if descripcion.contains("invalid login credentials")
+            || descripcion.contains("invalid_credentials") {
+            return "Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo."
+        }
+
+        if descripcion.contains("email not confirmed") {
+            return "Tu correo aún no ha sido confirmado. Revisa tu bandeja de entrada."
+        }
+
+        if descripcion.contains("user already registered")
+            || descripcion.contains("already been registered") {
+            return "Este correo ya tiene una cuenta registrada. Intenta iniciar sesión."
+        }
+
+        if descripcion.contains("password") && descripcion.contains("short") {
+            return "La contraseña es demasiado corta. Debe tener al menos 6 caracteres."
+        }
+
+        if descripcion.contains("rate limit") || descripcion.contains("too many requests") {
+            return "Demasiados intentos. Espera un momento antes de volver a intentar."
+        }
+
+        if descripcion.contains("network") || descripcion.contains("internet")
+            || descripcion.contains("offline") {
+            return "Sin conexión a internet. Verifica tu red e intenta de nuevo."
+        }
+
+        // Fallback genérico
+        return "Ocurrió un error inesperado: \(error.localizedDescription)"
     }
 }
 

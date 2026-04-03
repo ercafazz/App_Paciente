@@ -5,7 +5,7 @@ struct ContentView: View {
     @AppStorage("isAuthenticated") var isAuthenticated = false
     @AppStorage("datosCompletados") var datosCompletados = false
     @AppStorage("permisosCompletados") var permisosCompletados = false
-    @AppStorage("tutorialCompletado") var tutorialCompletado = false // NUEVA MEMORIA
+    @AppStorage("tutorialCompletado") var tutorialCompletado = false
     
     var body: some View {
         if !isAuthenticated {
@@ -21,28 +21,13 @@ struct ContentView: View {
             PermisosView(permisosCompletados: $permisosCompletados)
             
         } else if !tutorialCompletado {
-            // Paso 4: Tutorial de Complications (NUEVO)
+            // Paso 4: Tutorial de Complications
             ComplicacionOnboardingView(tutorialCompletado: $tutorialCompletado)
             
         } else {
-            // Paso 5: Todo listo. (Dashboard real)
-            VStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.accentColor)
-                Text("¡Onboarding Completado!")
-                    .font(.title)
-                    .bold()
-                    .padding()
-                
-                Button("Resetear Prueba") {
-                    isAuthenticated = false
-                    datosCompletados = false
-                    permisosCompletados = false
-                    tutorialCompletado = false
-                }
-                .padding(.top, 40)
-                .foregroundColor(.red)
+            // Paso 5: Todo listo. ¡Entramos a la app con NavigationStack!
+            NavigationStack {
+                DashboardView()
             }
         }
     }
