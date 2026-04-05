@@ -15,40 +15,53 @@ struct ContentView: View {
     var body: some View {
         Group {
             if isCheckingSession {
-                // Pantalla de carga mientras validamos la sesión
                 splashCarga
 
             } else if !isAuthenticated {
-                // Paso 1: Autenticación
                 AutenticacionView(isAuthenticated: $isAuthenticated)
 
             } else if !datosCompletados {
-                // Paso 2: Pantalla de completar datos
                 CompletarDatosView(datosCompletados: $datosCompletados)
 
             } else if !permisosCompletados {
-                // Paso 3: Permisos del Watch
                 PermisosView(permisosCompletados: $permisosCompletados)
 
             } else if !tutorialCompletado {
-                // Paso 4: Tutorial de Complications
                 ComplicacionOnboardingView(tutorialCompletado: $tutorialCompletado)
 
             } else {
-                // Paso 5: Todo listo. ¡Entramos a la app con NavigationStack!
                 NavigationStack {
                     DashboardView()
                 }
             }
         }
         .task {
+            // Si iOS relanzó la app en background (para HK delivery),
+            // NO inicializar SupabaseManager ni validar sesión.
+            // AppDelegate ya registró los observers — es todo lo que se necesita.
+            // Esto evita cargar el Supabase SDK innecesariamente en background.
+            let isBackground = await MainActor.run {
+                UIApplication.shared.applicationState == .background
+            }
+            guard !isBackground else {
+                print("[ContentView] ⏸️ Background launch — skip verificarSesion.")
+                isCheckingSession = false
+                return
+            }
             await verificarSesion()
         }
-        .onChange(of: tutorialCompletado) { _, completado in
-            // Cuando un usuario nuevo termina el onboarding, activar la tubería de HealthKit
+        .onChange(of: tutorialCompletado) { completado in
             if completado {
-                HealthKitManager.shared.configurarObservadores()
-                print("[ContentView] ✅ Onboarding finalizado. Observadores de HealthKit activados.")
+                // El usuario acaba de terminar el onboarding (Día 1).
+                // Los permisos ya fueron otorgados en PermisosView.
+                // Configuramos sistema completo + forzamos bootstrap inicial
+                // para que el dashboard tenga datos desde el primer momento.
+                print("[ContentView] 🎓 Onboarding completado.")
+                Task {
+                    await HealthKitManager.shared.configurarSistemaHealthKitCompleto()
+                    await HealthKitManager.shared.forzarSincronizacion()
+                    await HealthKitManager.shared.flushBuffer()
+                }
             }
         }
     }
@@ -71,22 +84,23 @@ struct ContentView: View {
 
     // MARK: - Validación silenciosa de sesión
 
-    /// Verifica con Supabase si hay una sesión activa y si el perfil del paciente
-    /// ya existe, sincronizando el estado local antes de mostrar cualquier vista.
     private func verificarSesion() async {
         defer { isCheckingSession = false }
 
-        // 1. Intentar obtener la sesión actual
+        // 1. Verificar sesión con Supabase
         guard let session = try? await SupabaseManager.shared.client.auth.session else {
-            // No hay sesión → enviar a login
-            print("[ContentView] No hay sesión activa. Redirigiendo a login.")
+            print("[ContentView] No hay sesión activa.")
             isAuthenticated = false
             return
         }
 
-        print("[ContentView] Sesión activa encontrada para: \(session.user.email ?? "sin email")")
+        print("[ContentView] Sesión activa: \(session.user.email ?? "sin email")")
 
-        // 2. Conectar la tubería de HealthKit con el ID del paciente
+        // 2. Guardar tokens + asignar idPaciente para la tubería de HealthKit
+        HealthKitManager.shared.guardarTokensSesion(
+            access: session.accessToken,
+            refresh: session.refreshToken
+        )
         HealthKitManager.shared.idPaciente = session.user.id
 
         // 3. Verificar si el perfil existe en la BD
@@ -98,20 +112,21 @@ struct ContentView: View {
             .execute()) != nil
 
         if perfilExiste {
-            print("[ContentView] ✅ Perfil encontrado. Sincronizando estado completo.")
+            print("[ContentView] ✅ Perfil encontrado. Usuario recurrente.")
             datosCompletados = true
             permisosCompletados = true
             tutorialCompletado = true
 
-            // 4. Activar observadores de HealthKit (la tubería de datos completa)
-            HealthKitManager.shared.configurarObservadores()
-            print("[ContentView] ✅ Observadores de HealthKit activados.")
+            // Configurar sistema HealthKit completo para usuario recurrente.
+            // Esto re-valida permisos y asegura observers activos.
+            await HealthKitManager.shared.configurarSistemaHealthKitCompleto()
+            await HealthKitManager.shared.flushBuffer()
         } else {
-            print("[ContentView] ⚠️ Perfil no encontrado. El usuario deberá completar sus datos.")
+            print("[ContentView] ⚠️ Sin perfil. Redirigiendo a Completar Datos.")
             datosCompletados = false
         }
 
-        // 5. En ambos casos, el usuario está autenticado
+        // 4. Autenticado en ambos casos
         isAuthenticated = true
     }
 }

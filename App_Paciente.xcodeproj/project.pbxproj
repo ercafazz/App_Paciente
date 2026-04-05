@@ -8,16 +8,96 @@
 
 /* Begin PBXBuildFile section */
 		944486552F78B37900081425 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 944486542F78B37900081425 /* Supabase */; };
+		94F07ED82F82132700BB42A2 /* TueriWatchWidget Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 94F07ECE2F82132500BB42A2 /* TueriWatchWidget Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		94F07EE62F82147F00BB42A2 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94F07EE52F82147F00BB42A2 /* WidgetKit.framework */; };
+		94F07EE82F82147F00BB42A2 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94F07EE72F82147F00BB42A2 /* SwiftUI.framework */; };
+		94F07EF52F82148100BB42A2 /* TueriWatchWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 94F07EE32F82147F00BB42A2 /* TueriWatchWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		94F07ED62F82132700BB42A2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9444863B2F78AB9E00081425 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 94F07ECD2F82132500BB42A2;
+			remoteInfo = "TueriWatchWidget Watch App";
+		};
+		94F07EF32F82148100BB42A2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9444863B2F78AB9E00081425 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 94F07EE22F82147F00BB42A2;
+			remoteInfo = TueriWatchWidgetExtension;
+		};
+		94F07EFF2F821A1500BB42A2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9444863B2F78AB9E00081425 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 94F07ECD2F82132500BB42A2;
+			remoteInfo = "TueriWatchWidget Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		94F07ED92F82132700BB42A2 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				94F07ED82F82132700BB42A2 /* TueriWatchWidget Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94F07EFA2F82148100BB42A2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				94F07EF52F82148100BB42A2 /* TueriWatchWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		944486432F78AB9E00081425 /* App_Paciente.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App_Paciente.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		94F07ECE2F82132500BB42A2 /* TueriWatchWidget Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TueriWatchWidget Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		94F07EE32F82147F00BB42A2 /* TueriWatchWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TueriWatchWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		94F07EE52F82147F00BB42A2 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		94F07EE72F82147F00BB42A2 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		94F07EF62F82148100BB42A2 /* Exceptions for "TueriWatchWidget" folder in "TueriWatchWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 94F07EE22F82147F00BB42A2 /* TueriWatchWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		944486452F78AB9E00081425 /* App_Paciente */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = App_Paciente;
+			sourceTree = "<group>";
+		};
+		94F07ECF2F82132500BB42A2 /* TueriWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "TueriWatch Watch App";
+			sourceTree = "<group>";
+		};
+		94F07EE92F82147F00BB42A2 /* TueriWatchWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				94F07EF62F82148100BB42A2 /* Exceptions for "TueriWatchWidget" folder in "TueriWatchWidgetExtension" target */,
+			);
+			path = TueriWatchWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +111,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		94F07ECB2F82132500BB42A2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94F07EE02F82147F00BB42A2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				94F07EE82F82147F00BB42A2 /* SwiftUI.framework in Frameworks */,
+				94F07EE62F82147F00BB42A2 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +134,9 @@
 			isa = PBXGroup;
 			children = (
 				944486452F78AB9E00081425 /* App_Paciente */,
+				94F07ECF2F82132500BB42A2 /* TueriWatch Watch App */,
+				94F07EE92F82147F00BB42A2 /* TueriWatchWidget */,
+				94F07EE42F82147F00BB42A2 /* Frameworks */,
 				944486442F78AB9E00081425 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,8 +145,19 @@
 			isa = PBXGroup;
 			children = (
 				944486432F78AB9E00081425 /* App_Paciente.app */,
+				94F07ECE2F82132500BB42A2 /* TueriWatchWidget Watch App.app */,
+				94F07EE32F82147F00BB42A2 /* TueriWatchWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		94F07EE42F82147F00BB42A2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				94F07EE52F82147F00BB42A2 /* WidgetKit.framework */,
+				94F07EE72F82147F00BB42A2 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -60,10 +170,13 @@
 				9444863F2F78AB9E00081425 /* Sources */,
 				944486402F78AB9E00081425 /* Frameworks */,
 				944486412F78AB9E00081425 /* Resources */,
+				94F07ED92F82132700BB42A2 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				94F07ED72F82132700BB42A2 /* PBXTargetDependency */,
+				94F07F002F821A1500BB42A2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				944486452F78AB9E00081425 /* App_Paciente */,
@@ -76,6 +189,52 @@
 			productReference = 944486432F78AB9E00081425 /* App_Paciente.app */;
 			productType = "com.apple.product-type.application";
 		};
+		94F07ECD2F82132500BB42A2 /* TueriWatchWidget Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 94F07EDC2F82132700BB42A2 /* Build configuration list for PBXNativeTarget "TueriWatchWidget Watch App" */;
+			buildPhases = (
+				94F07ECA2F82132500BB42A2 /* Sources */,
+				94F07ECB2F82132500BB42A2 /* Frameworks */,
+				94F07ECC2F82132500BB42A2 /* Resources */,
+				94F07EFA2F82148100BB42A2 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				94F07EF42F82148100BB42A2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				94F07ECF2F82132500BB42A2 /* TueriWatch Watch App */,
+			);
+			name = "TueriWatchWidget Watch App";
+			packageProductDependencies = (
+			);
+			productName = "TueriWatchWidget Watch App";
+			productReference = 94F07ECE2F82132500BB42A2 /* TueriWatchWidget Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		94F07EE22F82147F00BB42A2 /* TueriWatchWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 94F07EF72F82148100BB42A2 /* Build configuration list for PBXNativeTarget "TueriWatchWidgetExtension" */;
+			buildPhases = (
+				94F07EDF2F82147F00BB42A2 /* Sources */,
+				94F07EE02F82147F00BB42A2 /* Frameworks */,
+				94F07EE12F82147F00BB42A2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				94F07EE92F82147F00BB42A2 /* TueriWatchWidget */,
+			);
+			name = TueriWatchWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = TueriWatchWidgetExtension;
+			productReference = 94F07EE32F82147F00BB42A2 /* TueriWatchWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -87,6 +246,12 @@
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
 					944486422F78AB9E00081425 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					94F07ECD2F82132500BB42A2 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					94F07EE22F82147F00BB42A2 = {
 						CreatedOnToolsVersion = 26.3;
 					};
 				};
@@ -109,12 +274,28 @@
 			projectRoot = "";
 			targets = (
 				944486422F78AB9E00081425 /* App_Paciente */,
+				94F07ECD2F82132500BB42A2 /* TueriWatchWidget Watch App */,
+				94F07EE22F82147F00BB42A2 /* TueriWatchWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		944486412F78AB9E00081425 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94F07ECC2F82132500BB42A2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94F07EE12F82147F00BB42A2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -131,7 +312,39 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		94F07ECA2F82132500BB42A2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94F07EDF2F82147F00BB42A2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		94F07ED72F82132700BB42A2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 94F07ECD2F82132500BB42A2 /* TueriWatchWidget Watch App */;
+			targetProxy = 94F07ED62F82132700BB42A2 /* PBXContainerItemProxy */;
+		};
+		94F07EF42F82148100BB42A2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 94F07EE22F82147F00BB42A2 /* TueriWatchWidgetExtension */;
+			targetProxy = 94F07EF32F82148100BB42A2 /* PBXContainerItemProxy */;
+		};
+		94F07F002F821A1500BB42A2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 94F07ECD2F82132500BB42A2 /* TueriWatchWidget Watch App */;
+			targetProxy = 94F07EFF2F821A1500BB42A2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		9444864E2F78ABA000081425 /* Debug */ = {
@@ -278,7 +491,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vital.App-Paciente";
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.apppaciente;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -313,7 +526,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vital.App-Paciente";
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.apppaciente;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -322,6 +535,138 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		94F07EDA2F82132700BB42A2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ND3Y4HD5ZY;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = TueriWatchWidget;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.vital.apppaciente;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.apppaciente.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		94F07EDB2F82132700BB42A2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ND3Y4HD5ZY;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = TueriWatchWidget;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.vital.apppaciente;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.apppaciente.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
+		94F07EF82F82148100BB42A2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ND3Y4HD5ZY;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TueriWatchWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TueriWatchWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.apppaciente.watchkitapp.TueriWatchWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		94F07EF92F82148100BB42A2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ND3Y4HD5ZY;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TueriWatchWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TueriWatchWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.apppaciente.watchkitapp.TueriWatchWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
 			};
 			name = Release;
 		};
@@ -342,6 +687,24 @@
 			buildConfigurations = (
 				944486512F78ABA000081425 /* Debug */,
 				944486522F78ABA000081425 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		94F07EDC2F82132700BB42A2 /* Build configuration list for PBXNativeTarget "TueriWatchWidget Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94F07EDA2F82132700BB42A2 /* Debug */,
+				94F07EDB2F82132700BB42A2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		94F07EF72F82148100BB42A2 /* Build configuration list for PBXNativeTarget "TueriWatchWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94F07EF82F82148100BB42A2 /* Debug */,
+				94F07EF92F82148100BB42A2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

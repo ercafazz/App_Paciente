@@ -523,7 +523,13 @@ struct AutenticacionView: View {
 
             print("[AutenticacionView] ✅ Inicio de sesión exitoso para: \(session.user.email ?? correo)")
 
-            // 2. Conectar la tubería de HealthKit con el ID del paciente
+            // 2. Guardar tokens para envío ligero en background (sin Supabase SDK)
+            HealthKitManager.shared.guardarTokensSesion(
+                access: session.accessToken,
+                refresh: session.refreshToken
+            )
+
+            // 3. Conectar la tubería de HealthKit con el ID del paciente
             HealthKitManager.shared.idPaciente = session.user.id
 
             // 3. Verificar si el perfil ya existe en la BD
@@ -537,6 +543,10 @@ struct AutenticacionView: View {
             if response != nil {
                 // Perfil encontrado → saltar "Completar Datos"
                 print("[AutenticacionView] ✅ Perfil existente encontrado. Saltando onboarding completo.")
+
+                // Configurar sistema HealthKit completo (permisos + observers + background)
+                await HealthKitManager.shared.configurarSistemaHealthKitCompleto()
+
                 await MainActor.run {
                     datosCompletados = true
                     permisosCompletados = true
@@ -571,6 +581,14 @@ struct AutenticacionView: View {
             )
 
             print("[AutenticacionView] ✅ Registro exitoso para: \(response.user.email ?? correo)")
+
+            // Guardar tokens para envío ligero en background
+            if let session = response.session {
+                HealthKitManager.shared.guardarTokensSesion(
+                    access: session.accessToken,
+                    refresh: session.refreshToken
+                )
+            }
 
             // Conectar la tubería de HealthKit con el ID del nuevo paciente
             HealthKitManager.shared.idPaciente = response.user.id
