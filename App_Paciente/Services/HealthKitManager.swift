@@ -4,16 +4,19 @@
 //
 //  Created by Ernesto Carmona Fazzolari on 4/1/26.
 //
-//  Refactor v5.1 — HTTP POST directo (sin Supabase SDK en background).
+//  Refactor v5.2 — Lote dedicado a FC + bootstrap 2h.
 //
-//  Cambios:
-//  1. MuestraLigera: extrae valores en el callback, libera HKQuantitySample inmediatamente.
-//  2. Límite de 5000 muestras por tipo por query (safety net).
-//  3. calcularEstadisticas trabaja con [MuestraLigera] (24 bytes c/u, no ~1.5KB).
-//  4. autoreleasepool en el callback para forzar liberación de objetos ObjC.
-//  5. Envío en background usa URLSession directo (~0 RAM extra) en vez de Supabase SDK.
-//  6. Buffer en disco como fallback si el POST falla — flush en foreground.
-//  7. Eliminado OOM: en background solo se usa HealthKit + URLSession + Foundation.
+//  Cambios vs v5.1:
+//  1. Bootstrap inicial usa ventana de 2h (no 24h) para datos clínicamente recientes.
+//  2. Lote ahora es solo FC — SpO2/FR se envían como lecturas puntuales.
+//  3. Intervalo del lote se calcula solo con muestras de FC.
+//  4. POST a lotes_signos_vitales ya no incluye campos spo2_*/fr_*.
+//
+//  Mantenido de v5.1:
+//  - MuestraLigera, autoreleasepool, límite 5000.
+//  - EnvioLigero con URLSession directo + token refresh.
+//  - BufferLocal como fallback.
+//  - SpO2/FR como lecturas puntuales vía EnvioLigero.
 //
 
 import Foundation
@@ -404,25 +407,18 @@ private enum EnvioLigero {
         request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
         request.timeoutInterval = 15
 
-        // Construir JSON manual — omitir campos nil (Supabase usa DEFAULT en la BD)
+        // Construir JSON manual — solo FC + intervalo (Supabase usa DEFAULT para campos omitidos)
         var dict: [String: Any] = [
             "id_paciente": lote.idPaciente.uuidString,
             "inicio_intervalo": isoFormatter.string(from: lote.inicioIntervalo),
             "fin_intervalo": isoFormatter.string(from: lote.finIntervalo),
         ]
 
+        // Solo FC — SpO2/FR se envían como lecturas puntuales
         if let v = lote.fcPromedio   { dict["fc_promedio"]   = v }
         if let v = lote.fcMaxima     { dict["fc_maxima"]     = v }
         if let v = lote.fcMinima     { dict["fc_minima"]     = v }
         if let v = lote.fcLecturas   { dict["fc_lecturas"]   = v }
-        if let v = lote.spo2Promedio { dict["spo2_promedio"] = v }
-        if let v = lote.spo2Maxima   { dict["spo2_maxima"]   = v }
-        if let v = lote.spo2Minima   { dict["spo2_minima"]   = v }
-        if let v = lote.spo2Lecturas { dict["spo2_lecturas"] = v }
-        if let v = lote.frPromedio   { dict["fr_promedio"]   = v }
-        if let v = lote.frMaxima     { dict["fr_maxima"]     = v }
-        if let v = lote.frMinima     { dict["fr_minima"]     = v }
-        if let v = lote.frLecturas   { dict["fr_lecturas"]   = v }
 
         guard let body = try? JSONSerialization.data(withJSONObject: dict) else {
             print("[EnvioLigero] ❌ Error codificando lote")
@@ -468,11 +464,16 @@ final class HealthKitManager: @unchecked Sendable {
     /// ⚠️ TEMPORAL: 5 min para pruebas. Producción: 1800 (30 min).
     private static let VENTANA_BATCHING: TimeInterval = 300
 
-    /// Ventana máxima de antigüedad para muestras. SIEMPRE se aplica como
-    /// predicate en las anchored queries para filtrar datos prehistóricos
-    /// (ej. sincronizaciones tardías de iCloud desde hace un año).
+    /// Ventana máxima de antigüedad para muestras en modo incremental.
+    /// SIEMPRE se aplica como predicate en las anchored queries para filtrar
+    /// datos prehistóricos (ej. sincronizaciones tardías de iCloud desde hace un año).
     /// 24 horas es suficiente para no perder datos legítimos.
     private static let VENTANA_PREDICADO: TimeInterval = 86400
+
+    /// Ventana para el bootstrap inicial (anchor == nil).
+    /// Solo trae las últimas 2 horas para que el primer lote sea clínicamente
+    /// reciente y el intervalo de FC no muestre un rango de 24h.
+    private static let VENTANA_BOOTSTRAP: TimeInterval = 7200
 
     /// Límite de muestras por tipo por query. Safety net para evitar
     /// que una query descontrolada cargue todo el histórico en RAM.
@@ -766,19 +767,6 @@ final class HealthKitManager: @unchecked Sendable {
             return
         }
 
-        // ── BATCHING TIMER ──
-        if !forzar {
-            let lastSend = UserDefaults.standard.object(
-                forKey: Self.lastSendKey
-            ) as? Date ?? .distantPast
-            let elapsed = Date().timeIntervalSince(lastSend)
-
-            if elapsed < Self.VENTANA_BATCHING {
-                print("[HKM] ⏳ BATCHING: faltan \(Int(Self.VENTANA_BATCHING - elapsed))s.")
-                return
-            }
-        }
-
         print("[HKM] 🔄 PROCESAMIENTO — \(ts())")
 
         // ── FETCH: SECUENCIAL para minimizar memoria ──
@@ -786,6 +774,10 @@ final class HealthKitManager: @unchecked Sendable {
         // a MuestraLigera y los libera via autoreleasepool ANTES de la siguiente.
         // Secuencial = pico de ~120KB por tipo. Paralelo = ~360KB simultáneos.
         // En background (~50MB budget), esta diferencia es crítica.
+        //
+        // NOTA: El batching ya NO bloquea el fetch. Se evalúa por separado
+        // solo para el flujo del lote FC. Las lecturas puntuales SpO2/FR
+        // se envían siempre que haya muestras nuevas.
         let fc   = await consultarConAnchor(tipo: tipoFC)
         let spo2 = await consultarConAnchor(tipo: tipoSpO2)
         let fr   = await consultarConAnchor(tipo: tipoFR)
@@ -798,92 +790,112 @@ final class HealthKitManager: @unchecked Sendable {
         guard total > 0 else {
             print("[HKM] 📭 Sin muestras nuevas.")
             guardarAnchors(fc: fc, spo2: spo2, fr: fr)
-            UserDefaults.standard.set(Date(), forKey: Self.lastSendKey)
             return
         }
 
         print("[HKM] 📦 FC:\(mFC.count) SpO2:\(mSpO2.count) FR:\(mFR.count) — ~\(total * 24)B RAM")
 
-        // ── ESTADÍSTICAS (trabaja con MuestraLigera, no HKQuantitySample) ──
-        let estadFC   = calcularEstadisticas(de: mFC)
-        let estadSpO2 = calcularEstadisticas(de: mSpO2)
-        let estadFR   = calcularEstadisticas(de: mFR)
+        // Rastrear si algo se envió para decidir si notificar al dashboard.
+        var algoEnviado = false
 
-        // ── INTERVALO ──
-        let todasLasMuestras = mFC + mSpO2 + mFR
-        let inicio = todasLasMuestras.map(\.inicio).min() ?? Date()
-        let fin    = todasLasMuestras.map(\.fin).max()    ?? Date()
+        // Rastrear si el anchor de FC debe avanzarse. Si el batching difiere
+        // el lote, NO avanzamos el anchor FC — esas muestras se re-leen en
+        // el próximo tick para formar parte del lote cuando venza la ventana.
+        var avanzarAnchorFC = false
 
-        // ── LOTE ──
-        let lote = LoteSignosVitales(
-            id: nil,
-            idPaciente: idPaciente,
-            inicioIntervalo: inicio,
-            finIntervalo: fin,
-            fcPromedio:   estadFC.promedio,
-            fcMaxima:     estadFC.maximo,
-            fcMinima:     estadFC.minimo,
-            fcLecturas:   estadFC.conteo,
-            spo2Promedio: estadSpO2.promedio,
-            spo2Maxima:   estadSpO2.maximo,
-            spo2Minima:   estadSpO2.minimo,
-            spo2Lecturas: estadSpO2.conteo,
-            frPromedio:   estadFR.promedio,
-            frMaxima:     estadFR.maximo,
-            frMinima:     estadFR.minimo,
-            frLecturas:   estadFR.conteo,
-            creadoEn: nil
-        )
+        // ═══════════════════════════════════════════════════
+        // FLUJO 1: LOTE FC — sujeto a batching
+        // ═══════════════════════════════════════════════════
+        if !mFC.isEmpty {
+            // El batching aplica SOLO al lote FC, NO a las lecturas puntuales.
+            let lastSend = UserDefaults.standard.object(
+                forKey: Self.lastSendKey
+            ) as? Date ?? .distantPast
+            let elapsed = Date().timeIntervalSince(lastSend)
+            let batchingVencido = forzar || elapsed >= Self.VENTANA_BATCHING
 
-        // ── ENVIAR con HTTP POST ligero (sin Supabase SDK) ──
-        // URLSession.shared usa ~0 RAM extra vs SupabaseClient que carga
-        // swift-crypto, Auth, Realtime, etc. (~decenas de MB).
-        let enviado = await EnvioLigero.enviar(lote)
+            if batchingVencido {
+                let estadFC = calcularEstadisticas(de: mFC)
+                let inicio  = mFC.map(\.inicio).min() ?? Date()
+                let fin     = mFC.map(\.fin).max()    ?? Date()
 
-        if enviado {
-            guardarAnchors(fc: fc, spo2: spo2, fr: fr)
-            UserDefaults.standard.set(Date(), forKey: Self.lastSendKey)
-            print("[HKM] ✅ LOTE ENVIADO — \(total) muestras — \(ts())")
-
-            // ── LECTURAS PUNTUALES (SpO2 y FR) ──
-            // Insertar la última lectura válida de cada tipo en lecturas_puntuales.
-            // "Última" = la más reciente por fecha dentro de las muestras del procesamiento.
-            // FC NO se inserta aquí — solo usa el lote agregado.
-            if let ultimaSpO2 = mSpO2.max(by: { $0.fin < $1.fin }) {
-                // HealthKit devuelve SpO2 como fracción (0.0–1.0) → ×100 para porcentaje
-                let ok = await EnvioLigero.enviarLecturaPuntual(
-                    idPaciente: idPaciente, tipo: "spo2",
-                    valor: ultimaSpO2.valor * 100, fecha: ultimaSpO2.fin
+                let lote = LoteSignosVitales(
+                    id: nil,
+                    idPaciente: idPaciente,
+                    inicioIntervalo: inicio,
+                    finIntervalo: fin,
+                    fcPromedio:   estadFC.promedio,
+                    fcMaxima:     estadFC.maximo,
+                    fcMinima:     estadFC.minimo,
+                    fcLecturas:   estadFC.conteo,
+                    creadoEn: nil
                 )
-                if !ok { print("[HKM] ⚠️ Lectura puntual SpO2 no enviada.") }
-            }
-            if let ultimaFR = mFR.max(by: { $0.fin < $1.fin }) {
-                let ok = await EnvioLigero.enviarLecturaPuntual(
-                    idPaciente: idPaciente, tipo: "fr",
-                    valor: ultimaFR.valor, fecha: ultimaFR.fin
-                )
-                if !ok { print("[HKM] ⚠️ Lectura puntual FR no enviada.") }
-            }
 
-            // Solo notificar al Dashboard si la app está en foreground.
-            // En background nadie ve el dashboard → evita query innecesaria
-            // a Supabase SDK que consume memoria y CPU.
-            // Cuando el usuario abra la app, scenePhase .active → refreshID
-            // ya se encarga de refrescar el dashboard.
+                let enviado = await EnvioLigero.enviar(lote)
+                if enviado {
+                    print("[HKM] ✅ LOTE FC ENVIADO — \(mFC.count) muestras — \(ts())")
+                    algoEnviado = true
+                } else {
+                    BufferLocal.guardar(lote)
+                    print("[HKM] ⚠️ LOTE FC BUFFERED — \(mFC.count) muestras — pendientes: \(BufferLocal.conteo())")
+                }
+
+                // Lote procesado (enviado o buffered) → avanzar anchor FC
+                // y reiniciar ventana de batching.
+                avanzarAnchorFC = true
+                UserDefaults.standard.set(Date(), forKey: Self.lastSendKey)
+            } else {
+                let restante = Int(Self.VENTANA_BATCHING - elapsed)
+                print("[HKM] ⏳ BATCHING FC: faltan \(restante)s — lote diferido, puntuales continúan.")
+                // avanzarAnchorFC queda en false → las muestras se re-leerán
+                // en el próximo tick cuando la ventana haya vencido.
+            }
+        } else {
+            print("[HKM] ℹ️ Sin FC en este ciclo — no se crea lote.")
+        }
+
+        // ═══════════════════════════════════════════════════
+        // FLUJO 2: LECTURAS PUNTUALES — SIEMPRE (no sujetas a batching)
+        // ═══════════════════════════════════════════════════
+        if let ultimaSpO2 = mSpO2.max(by: { $0.fin < $1.fin }) {
+            // HealthKit devuelve SpO2 como fracción (0.0–1.0) → ×100 para porcentaje
+            let ok = await EnvioLigero.enviarLecturaPuntual(
+                idPaciente: idPaciente, tipo: "spo2",
+                valor: ultimaSpO2.valor * 100, fecha: ultimaSpO2.fin
+            )
+            if ok { algoEnviado = true }
+            else  { print("[HKM] ⚠️ Lectura puntual SpO2 no enviada.") }
+        }
+
+        if let ultimaFR = mFR.max(by: { $0.fin < $1.fin }) {
+            let ok = await EnvioLigero.enviarLecturaPuntual(
+                idPaciente: idPaciente, tipo: "fr",
+                valor: ultimaFR.valor, fecha: ultimaFR.fin
+            )
+            if ok { algoEnviado = true }
+            else  { print("[HKM] ⚠️ Lectura puntual FR no enviada.") }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // CIERRE: anchors, notificación
+        // ═══════════════════════════════════════════════════
+        // SpO2/FR: siempre avanzar el anchor (las lecturas puntuales son
+        // snapshots "best-effort" — solo publicamos la más reciente).
+        if let spo2 { AnchorStore.save(spo2.nuevoAnchor, for: spo2.tipo) }
+        if let fr   { AnchorStore.save(fr.nuevoAnchor,   for: fr.tipo) }
+        // FC: avanzar anchor SOLO si el lote se procesó. Si el batching
+        // lo difirió, preservamos el anchor anterior para re-leer esas
+        // muestras en el próximo tick.
+        if avanzarAnchorFC, let fc { AnchorStore.save(fc.nuevoAnchor, for: fc.tipo) }
+
+        if algoEnviado {
             DispatchQueue.main.async {
                 guard UIApplication.shared.applicationState == .active else {
-                    print("[HKM] 📭 Lote enviado en background — dashboard se actualizará al abrir.")
+                    print("[HKM] 📭 Datos enviados en background — dashboard se actualizará al abrir.")
                     return
                 }
                 NotificationCenter.default.post(name: .tueriLoteEnviado, object: nil)
             }
-        } else {
-            // Fallback: guardar en disco para reintentar en foreground (flushBuffer).
-            // No perder datos si no hay red o si Supabase está caído.
-            BufferLocal.guardar(lote)
-            guardarAnchors(fc: fc, spo2: spo2, fr: fr)
-            UserDefaults.standard.set(Date(), forKey: Self.lastSendKey)
-            print("[HKM] ⚠️ LOTE BUFFERED (fallback) — \(total) muestras — pendientes: \(BufferLocal.conteo())")
         }
     }
 
@@ -906,16 +918,16 @@ final class HealthKitManager: @unchecked Sendable {
         let esBootstrap = anchorGuardado == nil
         let unidadTipo = unidad(para: tipo)
 
-        // SIEMPRE aplicar predicado temporal — protege contra datos prehistóricos
-        // que HealthKit indexa tarde (ej. sincronización iCloud desde hace un año).
-        // El anchor hace el trabajo incremental; el predicado es un filtro de seguridad.
-        let desde = Date().addingTimeInterval(-Self.VENTANA_PREDICADO)
+        // Bootstrap: ventana corta (2h) para que el primer lote sea clínicamente reciente.
+        // Incremental: ventana amplia (24h) como filtro de seguridad contra datos prehistóricos.
+        let ventana = esBootstrap ? Self.VENTANA_BOOTSTRAP : Self.VENTANA_PREDICADO
+        let desde = Date().addingTimeInterval(-ventana)
         let predicate = HKQuery.predicateForSamples(withStart: desde, end: nil, options: [])
 
         if esBootstrap {
-            print("[HKM] 🆕 BOOTSTRAP [\(tag)]: primera sync, ventana \(Int(Self.VENTANA_PREDICADO/3600))h")
+            print("[HKM] 🆕 BOOTSTRAP [\(tag)]: primera sync, ventana \(Int(ventana/3600))h")
         } else {
-            print("[HKM] 🔄 INCREMENTAL [\(tag)]: anchor + predicado \(Int(Self.VENTANA_PREDICADO/3600))h")
+            print("[HKM] 🔄 INCREMENTAL [\(tag)]: anchor + predicado \(Int(ventana/3600))h")
         }
 
         return await withCheckedContinuation { continuation in

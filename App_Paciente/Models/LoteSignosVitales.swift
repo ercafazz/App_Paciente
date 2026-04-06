@@ -8,8 +8,11 @@
 import Foundation
 
 /// Modelo que representa un registro de la tabla `lotes_signos_vitales` en Supabase.
-/// Cada lote agrupa las lecturas de signos vitales capturadas por HealthKit
+/// Cada lote agrupa las lecturas de **Frecuencia Cardíaca** capturadas por HealthKit
 /// durante un intervalo de tiempo determinado.
+///
+/// SpO2 y FR ya NO se incluyen en el lote — se manejan como lecturas puntuales
+/// en la tabla `lecturas_puntuales`.
 struct LoteSignosVitales: Codable, Identifiable, Sendable {
 
     // MARK: - Identificación
@@ -28,20 +31,6 @@ struct LoteSignosVitales: Codable, Identifiable, Sendable {
     var fcMaxima: Double?
     var fcMinima: Double?
     var fcLecturas: Int?
-
-    // MARK: - Saturación de Oxígeno (%)
-
-    var spo2Promedio: Double?
-    var spo2Maxima: Double?
-    var spo2Minima: Double?
-    var spo2Lecturas: Int?
-
-    // MARK: - Frecuencia Respiratoria (rpm)
-
-    var frPromedio: Double?
-    var frMaxima: Double?
-    var frMinima: Double?
-    var frLecturas: Int?
 
     // MARK: - Metadatos
 
@@ -64,16 +53,6 @@ struct LoteSignosVitales: Codable, Identifiable, Sendable {
         case fcMaxima = "fc_maxima"
         case fcMinima = "fc_minima"
         case fcLecturas = "fc_lecturas"
-
-        case spo2Promedio = "spo2_promedio"
-        case spo2Maxima = "spo2_maxima"
-        case spo2Minima = "spo2_minima"
-        case spo2Lecturas = "spo2_lecturas"
-
-        case frPromedio = "fr_promedio"
-        case frMaxima = "fr_maxima"
-        case frMinima = "fr_minima"
-        case frLecturas = "fr_lecturas"
 
         case creadoEn = "creado_en"
     }
