@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Supabase
+
 /// Pantalla de ajustes del paciente. Muestra el perfil, los médicos vinculados
 /// y la opción de cerrar sesión. Corresponde a la Screen 7 del diseño de Tuēri.
 struct AjustesView: View {
@@ -19,21 +20,11 @@ struct AjustesView: View {
     @AppStorage("permisosCompletados") var permisosCompletados = false
     @AppStorage("tutorialCompletado") var tutorialCompletado = false
 
-    // MARK: - Datos Mock
+    // MARK: - Estado (datos reales de Supabase)
 
-    private let datosPerfil: [(etiqueta: String, valor: String)] = [
-        ("Nombre",              "Ernesto Apellido"),
-        ("Sexo",                "Masculino"),
-        ("Fecha de Nacimiento", "DD/MM/AAAA"),
-        ("Cédula",              "V-12345678"),
-        ("Teléfono",            "+58 XXX-XXXXXXX"),
-        ("Correo",              "correo@ejemplo.com"),
-    ]
-
-    private let medicosMock: [(nombre: String, telefono: String)] = [
-        ("Nombre Apellido", "+58 XXX-XXXXXXX"),
-        ("Nombre Apellido", "+58 XXX-XXXXXXX"),
-    ]
+    @State private var datosPerfil: [(etiqueta: String, valor: String)] = []
+    @State private var medicosVinculados: [(nombre: String, telefono: String)] = []
+    @State private var isLoading = true
 
     // MARK: - Colores
 
@@ -43,6 +34,21 @@ struct AjustesView: View {
     private let grisTexto = Color(red: 0.420, green: 0.440, blue: 0.500)
     private let grisFondo = Color(red: 0.945, green: 0.949, blue: 0.957)
     private let grisBorde = Color(red: 0.953, green: 0.957, blue: 0.965)
+
+    // MARK: - Formateador de fecha
+
+    private static let formateadorFechaNacimiento: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "dd/MM/yyyy"
+        return f
+    }()
+
+    private static let parserFechaNacimiento: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
 
     // MARK: - Body
 
@@ -65,6 +71,9 @@ struct AjustesView: View {
         }
         .background(fondoPantalla.ignoresSafeArea())
         .navigationBarHidden(true)
+        .task {
+            await cargarDatos()
+        }
     }
 
     // MARK: - Barra de Navegación Custom
@@ -119,18 +128,25 @@ struct AjustesView: View {
 
             // Filas de datos
             VStack(spacing: 0) {
-                ForEach(Array(datosPerfil.enumerated()), id: \.element.etiqueta) { index, dato in
-                    PerfilRowView(
-                        etiqueta: dato.etiqueta,
-                        valor: dato.valor,
-                        colorTitulo: grisTitulo,
-                        colorValor: grisTexto
-                    )
+                if isLoading {
+                    ProgressView()
+                        .tint(tealTueri)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 30)
+                } else {
+                    ForEach(Array(datosPerfil.enumerated()), id: \.element.etiqueta) { index, dato in
+                        PerfilRowView(
+                            etiqueta: dato.etiqueta,
+                            valor: dato.valor,
+                            colorTitulo: grisTitulo,
+                            colorValor: grisTexto
+                        )
 
-                    if index < datosPerfil.count - 1 {
-                        Divider()
-                            .background(grisBorde)
-                            .padding(.horizontal, 18)
+                        if index < datosPerfil.count - 1 {
+                            Divider()
+                                .background(grisBorde)
+                                .padding(.horizontal, 18)
+                        }
                     }
                 }
             }
@@ -152,20 +168,33 @@ struct AjustesView: View {
 
             // Tarjeta
             VStack(spacing: 0) {
-                ForEach(Array(medicosMock.enumerated()), id: \.offset) { index, medico in
-                    MedicoRowView(
-                        nombre: medico.nombre,
-                        telefono: medico.telefono,
-                        teal: tealTueri,
-                        grisFondo: grisFondo,
-                        grisTitulo: grisTitulo,
-                        grisTexto: grisTexto
-                    )
+                if isLoading {
+                    ProgressView()
+                        .tint(tealTueri)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 30)
+                } else if medicosVinculados.isEmpty {
+                    Text("Sin médicos vinculados")
+                        .font(.system(size: 15))
+                        .foregroundStyle(grisTexto)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                } else {
+                    ForEach(Array(medicosVinculados.enumerated()), id: \.offset) { index, medico in
+                        MedicoRowView(
+                            nombre: medico.nombre,
+                            telefono: medico.telefono,
+                            teal: tealTueri,
+                            grisFondo: grisFondo,
+                            grisTitulo: grisTitulo,
+                            grisTexto: grisTexto
+                        )
 
-                    if index < medicosMock.count - 1 {
-                        Divider()
-                            .background(grisBorde)
-                            .padding(.horizontal, 18)
+                        if index < medicosVinculados.count - 1 {
+                            Divider()
+                                .background(grisBorde)
+                                .padding(.horizontal, 18)
+                        }
                     }
                 }
             }
@@ -201,6 +230,132 @@ struct AjustesView: View {
         }
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Carga de datos desde Supabase
+
+    private func cargarDatos() async {
+        do {
+            let session = try await SupabaseManager.shared.client.auth.session
+            let userId = session.user.id
+
+            // Queries en paralelo: perfil + médicos vinculados
+            async let perfilQuery: PerfilRow = SupabaseManager.shared.client
+                .from("perfiles")
+                .select()
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
+
+            async let medicosQuery: [AsignacionConMedico] = SupabaseManager.shared.client
+                .from("asignaciones_clinicas")
+                .select("id_medico, perfiles!asignaciones_clinicas_id_medico_fkey(nombre_completo, telefono)")
+                .eq("id_paciente", value: userId)
+                .eq("estado", value: "activo")
+                .execute()
+                .value
+
+            let perfil = try await perfilQuery
+            let asignaciones = try await medicosQuery
+
+            // Formatear sexo biológico
+            let sexoDisplay: String
+            switch perfil.sexoBiologico?.lowercased() {
+            case "masculino": sexoDisplay = "Masculino"
+            case "femenino": sexoDisplay = "Femenino"
+            default: sexoDisplay = perfil.sexoBiologico ?? "—"
+            }
+
+            // Formatear fecha de nacimiento
+            let fechaDisplay: String
+            if let fechaStr = perfil.fechaNacimiento,
+               let fecha = Self.parserFechaNacimiento.date(from: fechaStr) {
+                fechaDisplay = Self.formateadorFechaNacimiento.string(from: fecha)
+            } else {
+                fechaDisplay = "—"
+            }
+
+            let datos: [(etiqueta: String, valor: String)] = [
+                ("Nombre",              perfil.nombreCompleto),
+                ("Sexo",                sexoDisplay),
+                ("Fecha de Nacimiento", fechaDisplay),
+                ("Cédula",              perfil.cedula ?? "—"),
+                ("Teléfono",            perfil.telefono ?? "—"),
+                ("Correo",              perfil.correoElectronico),
+            ]
+
+            let medicos = asignaciones.compactMap { asignacion -> (nombre: String, telefono: String)? in
+                guard let medicoData = asignacion.perfiles else { return nil }
+                return (
+                    nombre: medicoData.nombreCompleto ?? "—",
+                    telefono: medicoData.telefono ?? "—"
+                )
+            }
+
+            await MainActor.run {
+                datosPerfil = datos
+                medicosVinculados = medicos
+                isLoading = false
+            }
+
+            print("[AjustesView] ✅ Datos cargados. Médicos vinculados: \(medicos.count)")
+
+        } catch {
+            print("[AjustesView] ❌ Error: \(error.localizedDescription)")
+
+            await MainActor.run {
+                datosPerfil = [
+                    ("Nombre", "—"), ("Sexo", "—"), ("Fecha de Nacimiento", "—"),
+                    ("Cédula", "—"), ("Teléfono", "—"), ("Correo", "—"),
+                ]
+                medicosVinculados = []
+                isLoading = false
+            }
+        }
+    }
+}
+
+// MARK: - Modelos Codable para Supabase
+
+/// Fila de la tabla `perfiles`.
+private struct PerfilRow: Codable {
+    let nombreCompleto: String
+    let sexoBiologico: String?
+    let fechaNacimiento: String?
+    let cedula: String?
+    let telefono: String?
+    let correoElectronico: String
+
+    enum CodingKeys: String, CodingKey {
+        case nombreCompleto = "nombre_completo"
+        case sexoBiologico = "sexo_biologico"
+        case fechaNacimiento = "fecha_nacimiento"
+        case cedula
+        case telefono
+        case correoElectronico = "correo_electronico"
+    }
+}
+
+/// Datos del médico obtenidos vía FK join en la query de asignaciones.
+private struct MedicoPerfilData: Codable {
+    let nombreCompleto: String?
+    let telefono: String?
+
+    enum CodingKeys: String, CodingKey {
+        case nombreCompleto = "nombre_completo"
+        case telefono
+    }
+}
+
+/// Fila de `asignaciones_clinicas` con join al perfil del médico.
+private struct AsignacionConMedico: Codable {
+    let idMedico: UUID
+    let perfiles: MedicoPerfilData?
+
+    enum CodingKeys: String, CodingKey {
+        case idMedico = "id_medico"
+        case perfiles
     }
 }
 
