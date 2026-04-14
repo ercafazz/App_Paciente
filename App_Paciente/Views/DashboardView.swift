@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 import Auth
 import Supabase
 
@@ -28,6 +29,7 @@ struct DashboardView: View {
     @State private var ultimaSpO2: LecturaPuntualDisplay?
     @State private var ultimaFR: LecturaPuntualDisplay?
     @State private var nombreUsuario = "Paciente"
+    @State private var idPaciente: UUID?
 
     /// ID que cambia para re-disparar `.task(id:)`.
     /// SwiftUI cancela el task anterior automáticamente → sin refreshes duplicados.
@@ -85,6 +87,33 @@ struct DashboardView: View {
         } else {
             return Self.formateadorHoraDia.string(from: fecha)
         }
+    }
+
+    // MARK: - Generador de QR
+
+    /// Genera un UIImage con el QR de vinculación del paciente.
+    /// El string codificado es `tueri://paciente/{UUID}`.
+    /// Usa CIFilter nativo — sin dependencias externas.
+    private func generarQR(para id: UUID) -> UIImage? {
+        let contenido = "tueri://paciente/\(id.uuidString)"
+        guard let data = contenido.data(using: .utf8) else { return nil }
+
+        let filtro = CIFilter.qrCodeGenerator()
+        filtro.setValue(data, forKey: "inputMessage")
+        filtro.setValue("M", forKey: "inputCorrectionLevel")
+
+        guard let ciImage = filtro.outputImage else { return nil }
+
+        // El QR nativo es ~27x27px. Escalar a 176pt (×7) sin interpolación
+        // para que se vea nítido, no borroso.
+        let escala = CGAffineTransform(scaleX: 7, y: 7)
+        let escalado = ciImage.transformed(by: escala)
+
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(escalado, from: escalado.extent) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage)
     }
 
     // MARK: - Signos vitales derivados
@@ -196,9 +225,18 @@ struct DashboardView: View {
                 .fill(grisFondoQR)
                 .frame(width: 176, height: 176)
                 .overlay(
-                    Image(systemName: "qrcode")
-                        .font(.system(size: 100, weight: .ultraLight))
-                        .foregroundStyle(grisTitulo)
+                    Group {
+                        if let id = idPaciente, let qrImage = generarQR(para: id) {
+                            Image(uiImage: qrImage)
+                                .interpolation(.none)
+                                .resizable()
+                                .scaledToFit()
+                                .padding(12)
+                        } else {
+                            ProgressView()
+                                .tint(Color(red: 0.051, green: 0.424, blue: 0.471))
+                        }
+                    }
                 )
 
             Text("Permite que tu médico escanee este código para poder monitorear tus signos vitales.")
@@ -306,6 +344,7 @@ struct DashboardView: View {
                 ultimaFR = frRows.first.map {
                     LecturaPuntualDisplay(valor: $0.valor, fecha: $0.fechaLectura)
                 }
+                idPaciente = userId
                 if let nombre { nombreUsuario = nombre }
                 isLoading = false
             }
