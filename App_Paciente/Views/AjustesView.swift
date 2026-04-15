@@ -23,8 +23,13 @@ struct AjustesView: View {
     // MARK: - Estado (datos reales de Supabase)
 
     @State private var datosPerfil: [(etiqueta: String, valor: String)] = []
-    @State private var medicosVinculados: [(nombre: String, telefono: String)] = []
+    @State private var medicosVinculados: [MedicoVinculado] = []
     @State private var isLoading = true
+
+    // Estado para alerta de confirmación de desvinculación
+    @State private var medicoADesvincular: MedicoVinculado?
+    @State private var mostrarAlertaDesvincular = false
+    @State private var desvinculando = false
 
     // MARK: - Colores
 
@@ -73,6 +78,21 @@ struct AjustesView: View {
         .navigationBarHidden(true)
         .task {
             await cargarDatos()
+        }
+        .alert("Desvincular médico", isPresented: $mostrarAlertaDesvincular) {
+            Button("Cancelar", role: .cancel) {
+                medicoADesvincular = nil
+            }
+            Button("Desvincular", role: .destructive) {
+                guard let medico = medicoADesvincular else { return }
+                Task {
+                    await desvincularMedico(medico)
+                }
+            }
+        } message: {
+            if let medico = medicoADesvincular {
+                Text("¿Deseas desvincular a \(medico.nombre)? Ya no podrá monitorear tus signos vitales.")
+            }
         }
     }
 
@@ -180,15 +200,19 @@ struct AjustesView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 20)
                 } else {
-                    ForEach(Array(medicosVinculados.enumerated()), id: \.offset) { index, medico in
+                    ForEach(Array(medicosVinculados.enumerated()), id: \.element.idMedico) { index, medico in
                         MedicoRowView(
                             nombre: medico.nombre,
                             telefono: medico.telefono,
+                            desvinculando: desvinculando && medicoADesvincular?.idMedico == medico.idMedico,
                             teal: tealTueri,
                             grisFondo: grisFondo,
                             grisTitulo: grisTitulo,
                             grisTexto: grisTexto
-                        )
+                        ) {
+                            medicoADesvincular = medico
+                            mostrarAlertaDesvincular = true
+                        }
 
                         if index < medicosVinculados.count - 1 {
                             Divider()
@@ -285,9 +309,10 @@ struct AjustesView: View {
                 ("Correo",              perfil.correoElectronico),
             ]
 
-            let medicos = asignaciones.compactMap { asignacion -> (nombre: String, telefono: String)? in
+            let medicos = asignaciones.compactMap { asignacion -> MedicoVinculado? in
                 guard let medicoData = asignacion.perfiles else { return nil }
-                return (
+                return MedicoVinculado(
+                    idMedico: asignacion.idMedico,
                     nombre: medicoData.nombreCompleto ?? "—",
                     telefono: medicoData.telefono ?? "—"
                 )
@@ -314,6 +339,61 @@ struct AjustesView: View {
             }
         }
     }
+    // MARK: - Desvinculación vía Edge Function
+
+    private func desvincularMedico(_ medico: MedicoVinculado) async {
+        desvinculando = true
+        defer {
+            Task { @MainActor in
+                desvinculando = false
+                medicoADesvincular = nil
+            }
+        }
+
+        do {
+            let session = try await SupabaseManager.shared.client.auth.session
+            let token = session.accessToken
+
+            guard let url = URL(
+                string: "https://aqopgqcpdmbmgkxmgvoy.supabase.co/functions/v1/desvincular-medico"
+            ) else { return }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.timeoutInterval = 15
+
+            let body = ["id_medico": medico.idMedico.uuidString]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let http = response as? HTTPURLResponse else { return }
+
+            if (200...299).contains(http.statusCode) {
+                print("[AjustesView] ✅ Médico desvinculado: \(medico.nombre)")
+                // Remover de la lista localmente (sin re-query)
+                await MainActor.run {
+                    medicosVinculados.removeAll { $0.idMedico == medico.idMedico }
+                }
+            } else {
+                let respuesta = String(data: data, encoding: .utf8) ?? ""
+                print("[AjustesView] ❌ Error desvinculando (HTTP \(http.statusCode)): \(respuesta)")
+            }
+
+        } catch {
+            print("[AjustesView] ❌ Error de red: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Modelo de médico vinculado
+
+private struct MedicoVinculado {
+    let idMedico: UUID
+    let nombre: String
+    let telefono: String
 }
 
 // MARK: - Modelos Codable para Supabase
@@ -391,10 +471,12 @@ private struct PerfilRowView: View {
 private struct MedicoRowView: View {
     let nombre: String
     let telefono: String
+    let desvinculando: Bool
     let teal: Color
     let grisFondo: Color
     let grisTitulo: Color
     let grisTexto: Color
+    let onDesvincular: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -423,13 +505,15 @@ private struct MedicoRowView: View {
             Spacer()
 
             // Botón desvincular
-            Button {
-                // TODO: Implementar desvinculación del médico
-                print("[AjustesView] Desvincular: \(nombre)")
-            } label: {
-                Text("Desvincular")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.red)
+            if desvinculando {
+                ProgressView()
+                    .tint(.red)
+            } else {
+                Button(action: onDesvincular) {
+                    Text("Desvincular")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.red)
+                }
             }
         }
         .padding(.horizontal, 18)
