@@ -1,4 +1,5 @@
 import SwiftUI
+import GoogleSignIn
 import os
 
 // MARK: - AppDelegate
@@ -37,6 +38,9 @@ struct App_PacienteApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
         .onChange(of: scenePhase) { phase in
             switch phase {

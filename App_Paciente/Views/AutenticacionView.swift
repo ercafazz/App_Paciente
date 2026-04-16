@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import GoogleSignIn
 import Supabase
 import Auth
 /// Pantalla unificada de autenticación que combina Inicio de Sesión y Registro
@@ -362,11 +363,11 @@ struct AutenticacionView: View {
 
     private var botonGoogle: some View {
         Button {
-            // TODO: Implementar autenticación con Google vía Supabase Auth
+            Task { await iniciarSesionConGoogle() }
         } label: {
             HStack(spacing: 10) {
                 iconoGoogle
-                Text("Google")
+                Text("Continuar con Google")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(grisTitulo)
             }
@@ -379,6 +380,7 @@ struct AutenticacionView: View {
                     .stroke(grisBorde, lineWidth: 1)
             )
         }
+        .disabled(estaCargando)
     }
 
     /// Ícono de Google multi-color dibujado con Path (sin dependencias externas).
@@ -600,6 +602,123 @@ struct AutenticacionView: View {
             mostrarAlertaError = true
             print("[AutenticacionView] ❌ Error de registro: \(error)")
         }
+    }
+
+    // MARK: - Google Sign-In
+
+    /// Web Client ID de Google Cloud (configurado en Supabase Auth → Google provider).
+    /// Este es el CLIENT ID de tipo "Web application", NO el de iOS.
+    /// Supabase lo necesita para validar el idToken en el servidor.
+    private static let googleWebClientID = "107966991263-nj1su6o9sos7e0a3blmurrc5b9g1i5cv.apps.googleusercontent.com"
+
+    /// Ejecuta el flujo nativo de Google Sign-In y autentica con Supabase.
+    /// Usa el mismo enrutamiento inteligente que email/password:
+    /// - Si el perfil existe → Dashboard directo
+    /// - Si no existe → CompletarDatosView
+    private func iniciarSesionConGoogle() async {
+        estaCargando = true
+        defer { estaCargando = false }
+
+        do {
+            // 1. Obtener el rootViewController para presentar el modal de Google
+            guard let windowScene = await MainActor.run(body: {
+                UIApplication.shared.connectedScenes.first as? UIWindowScene
+            }),
+            let rootVC = await MainActor.run(body: {
+                windowScene.windows.first?.rootViewController
+            }) else {
+                mensajeError = "No se pudo presentar la pantalla de Google."
+                mostrarAlertaError = true
+                return
+            }
+
+            // 2. Configurar el serverClientID (Web Client ID para Supabase)
+            let config = GIDConfiguration(
+                clientID: Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String ?? "",
+                serverClientID: Self.googleWebClientID
+            )
+            GIDSignIn.sharedInstance.configuration = config
+
+            // 3. Ejecutar el flujo nativo de Google Sign-In
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
+
+            // 4. Extraer el idToken de Google
+            guard let idToken = result.user.idToken?.tokenString else {
+                mensajeError = "No se pudo obtener el token de Google."
+                mostrarAlertaError = true
+                return
+            }
+
+            print("[AutenticacionView] ✅ Google Sign-In exitoso: \(result.user.profile?.email ?? "sin email")")
+
+            // 5. Autenticar con Supabase usando el idToken de Google
+            let session = try await SupabaseManager.shared.client.auth.signInWithIdToken(
+                credentials: .init(provider: .google, idToken: idToken)
+            )
+
+            print("[AutenticacionView] ✅ Supabase auth con Google exitoso: \(session.user.email ?? "sin email")")
+
+            // 6. Guardar tokens para envío ligero en background
+            HealthKitManager.shared.guardarTokensSesion(
+                access: session.accessToken,
+                refresh: session.refreshToken
+            )
+
+            // 7. Conectar la tubería de HealthKit con el ID del paciente
+            HealthKitManager.shared.idPaciente = session.user.id
+
+            // 8. Verificar si el perfil ya existe (mismo flujo que email/password)
+            let response = try? await SupabaseManager.shared.client
+                .from("perfiles")
+                .select()
+                .eq("id", value: session.user.id)
+                .single()
+                .execute()
+
+            if response != nil {
+                // Perfil encontrado → saltar todo el onboarding
+                print("[AutenticacionView] ✅ Perfil existente (Google). Saltando onboarding.")
+
+                await HealthKitManager.shared.configurarSistemaHealthKitCompleto()
+
+                await MainActor.run {
+                    datosCompletados = true
+                    permisosCompletados = true
+                    tutorialCompletado = true
+                    isAuthenticated = true
+                }
+            } else {
+                // Perfil no encontrado → completar datos
+                print("[AutenticacionView] ⚠️ Sin perfil (Google). Redirigiendo a Completar Datos.")
+                await MainActor.run {
+                    isAuthenticated = true
+                }
+            }
+
+        } catch let error as GIDSignInError where error.code == .canceled {
+            // El usuario canceló el modal de Google — no mostrar error
+            print("[AutenticacionView] ℹ️ Google Sign-In cancelado por el usuario.")
+        } catch {
+            mensajeError = mapearErrorGoogle(error)
+            mostrarAlertaError = true
+            print("[AutenticacionView] ❌ Error Google Sign-In: \(error)")
+        }
+    }
+
+    /// Traduce errores de Google Sign-In a mensajes amigables.
+    private func mapearErrorGoogle(_ error: Error) -> String {
+        let descripcion = error.localizedDescription.lowercased()
+
+        if descripcion.contains("network") || descripcion.contains("internet") {
+            return "Sin conexión a internet. Verifica tu red e intenta de nuevo."
+        }
+
+        if descripcion.contains("canceled") || descripcion.contains("cancelled") {
+            return "Inicio de sesión cancelado."
+        }
+
+        // Intentar mapear también errores de Supabase que vengan del paso signInWithIdToken
+        return mapearErrorAuth(error)
     }
 
     // MARK: - Mapeo de errores legible

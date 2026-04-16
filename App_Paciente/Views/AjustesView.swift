@@ -9,7 +9,7 @@ import SwiftUI
 import Supabase
 
 /// Pantalla de ajustes del paciente. Muestra el perfil, los médicos vinculados
-/// y la opción de cerrar sesión. Corresponde a la Screen 7 del diseño de Tuēri.
+/// y la opción de cerrar sesión. Corresponde a la Screen 7 del diseño de Tueri.
 struct AjustesView: View {
 
     // MARK: - Environment
@@ -30,6 +30,31 @@ struct AjustesView: View {
     @State private var medicoADesvincular: MedicoVinculado?
     @State private var mostrarAlertaDesvincular = false
     @State private var desvinculando = false
+
+    // MARK: - Estado de edición
+
+    @State private var isEditing = false
+    @State private var isSaving = false
+
+    // Campos editables (temporales mientras se edita)
+    @State private var editNombre = ""
+    @State private var editTelefono = ""
+    @State private var editCorreo = ""
+
+    // Valores originales para detectar cambios
+    @State private var originalNombre = ""
+    @State private var originalTelefono = ""
+    @State private var originalCorreo = ""
+
+    // Campos bloqueados (solo lectura, siempre)
+    @State private var displaySexo = "—"
+    @State private var displayFechaNacimiento = "—"
+    @State private var displayCedula = "—"
+
+    // Alertas
+    @State private var mostrarAlertaExito = false
+    @State private var mostrarAlertaError = false
+    @State private var mensajeAlerta = ""
 
     // MARK: - Colores
 
@@ -79,7 +104,7 @@ struct AjustesView: View {
         .task {
             await cargarDatos()
         }
-        .alert("Desvincular médico", isPresented: $mostrarAlertaDesvincular) {
+        .alert("Desvincular medico", isPresented: $mostrarAlertaDesvincular) {
             Button("Cancelar", role: .cancel) {
                 medicoADesvincular = nil
             }
@@ -91,35 +116,78 @@ struct AjustesView: View {
             }
         } message: {
             if let medico = medicoADesvincular {
-                Text("¿Deseas desvincular a \(medico.nombre)? Ya no podrá monitorear tus signos vitales.")
+                Text("Deseas desvincular a \(medico.nombre)? Ya no podra monitorear tus signos vitales.")
             }
+        }
+        .alert("Cambios guardados", isPresented: $mostrarAlertaExito) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(mensajeAlerta)
+        }
+        .alert("Error", isPresented: $mostrarAlertaError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(mensajeAlerta)
         }
     }
 
-    // MARK: - Barra de Navegación Custom
+    // MARK: - Barra de Navegacion Custom
 
     private var barraNavegacion: some View {
         ZStack {
-            // Título centrado
+            // Titulo centrado
             Text("Ajustes")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(grisTitulo)
 
-            // Botón Volver a la izquierda
+            // Boton Volver a la izquierda
             HStack {
                 Button {
-                    dismiss()
+                    if isEditing {
+                        // Cancelar edicion y restaurar valores originales
+                        cancelarEdicion()
+                    } else {
+                        dismiss()
+                    }
                 } label: {
                     HStack(spacing: 2) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .semibold))
-                        Text("Volver")
+                        Text(isEditing ? "Cancelar" : "Volver")
                             .font(.system(size: 17, weight: .medium))
                     }
                     .foregroundStyle(tealTueri)
                 }
 
                 Spacer()
+
+                // Boton Editar / Guardar a la derecha
+                if !isLoading {
+                    if isEditing {
+                        if isSaving {
+                            ProgressView()
+                                .tint(tealTueri)
+                        } else {
+                            Button {
+                                Task { await guardarCambios() }
+                            } label: {
+                                Text("Guardar")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(tealTueri)
+                            }
+                            .disabled(!hayCambios)
+                            .opacity(hayCambios ? 1.0 : 0.4)
+                        }
+                    } else {
+                        Button {
+                            iniciarEdicion()
+                        } label: {
+                            Text("Editar")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(tealTueri)
+                        }
+                    }
+                }
             }
         }
         .frame(height: 44)
@@ -153,7 +221,27 @@ struct AjustesView: View {
                         .tint(tealTueri)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 30)
+                } else if isEditing {
+                    // === MODO EDICION ===
+                    perfilRowEditable(etiqueta: "Nombre", texto: $editNombre)
+                    Divider().background(grisBorde).padding(.horizontal, 18)
+
+                    perfilRowBloqueado(etiqueta: "Sexo", valor: displaySexo)
+                    Divider().background(grisBorde).padding(.horizontal, 18)
+
+                    perfilRowBloqueado(etiqueta: "Fecha de Nacimiento", valor: displayFechaNacimiento)
+                    Divider().background(grisBorde).padding(.horizontal, 18)
+
+                    perfilRowBloqueado(etiqueta: "Cedula", valor: displayCedula)
+                    Divider().background(grisBorde).padding(.horizontal, 18)
+
+                    perfilRowEditable(etiqueta: "Telefono", texto: $editTelefono, teclado: .phonePad)
+                    Divider().background(grisBorde).padding(.horizontal, 18)
+
+                    perfilRowEditable(etiqueta: "Correo", texto: $editCorreo, teclado: .emailAddress)
+
                 } else {
+                    // === MODO LECTURA ===
                     ForEach(Array(datosPerfil.enumerated()), id: \.element.etiqueta) { index, dato in
                         PerfilRowView(
                             etiqueta: dato.etiqueta,
@@ -175,11 +263,64 @@ struct AjustesView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Bloque 2: Médicos Vinculados
+    // MARK: - Fila editable (TextField)
+
+    private func perfilRowEditable(
+        etiqueta: String,
+        texto: Binding<String>,
+        teclado: UIKeyboardType = .default
+    ) -> some View {
+        HStack {
+            Text(etiqueta)
+                .font(.system(size: 15))
+                .foregroundStyle(grisTitulo)
+                .frame(width: 80, alignment: .leading)
+
+            Spacer()
+
+            TextField(etiqueta, text: texto)
+                .font(.system(size: 15))
+                .foregroundStyle(grisTitulo)
+                .multilineTextAlignment(.trailing)
+                .keyboardType(teclado)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(
+                    teclado == .emailAddress ? .never : .words
+                )
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 13)
+    }
+
+    // MARK: - Fila bloqueada (solo lectura, estilo atenuado)
+
+    private func perfilRowBloqueado(etiqueta: String, valor: String) -> some View {
+        HStack {
+            Text(etiqueta)
+                .font(.system(size: 15))
+                .foregroundStyle(grisTitulo)
+
+            Spacer()
+
+            HStack(spacing: 4) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(grisTexto.opacity(0.5))
+                Text(valor)
+                    .font(.system(size: 15))
+                    .foregroundStyle(grisTexto.opacity(0.6))
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 13)
+        .background(grisFondo.opacity(0.3))
+    }
+
+    // MARK: - Bloque 2: Medicos Vinculados
 
     private var bloqueMedicos: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Etiqueta de sección
+            // Etiqueta de seccion
             Text("PERSONAL DE SALUD VINCULADO")
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(1.1)
@@ -194,7 +335,7 @@ struct AjustesView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 30)
                 } else if medicosVinculados.isEmpty {
-                    Text("Sin médicos vinculados")
+                    Text("Sin medicos vinculados")
                         .font(.system(size: 15))
                         .foregroundStyle(grisTexto)
                         .frame(maxWidth: .infinity)
@@ -227,7 +368,7 @@ struct AjustesView: View {
         }
     }
 
-    // MARK: - Bloque 3: Cerrar Sesión
+    // MARK: - Bloque 3: Cerrar Sesion
 
     private var bloqueCerrarSesion: some View {
         Button {
@@ -240,13 +381,13 @@ struct AjustesView: View {
                     permisosCompletados = false
                     tutorialCompletado = false
                     dismiss()
-                    print("[AjustesView] ✅ Sesión cerrada exitosamente.")
+                    print("[AjustesView] Sesion cerrada exitosamente.")
                 } catch {
-                    print("[AjustesView] ❌ Error al cerrar sesión: \(error.localizedDescription)")
+                    print("[AjustesView] Error al cerrar sesion: \(error.localizedDescription)")
                 }
             }
         } label: {
-            Text("Cerrar Sesión")
+            Text("Cerrar Sesion")
                 .font(.system(size: 16))
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity)
@@ -256,6 +397,146 @@ struct AjustesView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
+    // MARK: - Deteccion de cambios
+
+    private var hayCambios: Bool {
+        editNombre.trimmingCharacters(in: .whitespaces) != originalNombre ||
+        editTelefono.trimmingCharacters(in: .whitespaces) != originalTelefono ||
+        editCorreo.trimmingCharacters(in: .whitespaces) != originalCorreo
+    }
+
+    private var cambioNombre: Bool {
+        editNombre.trimmingCharacters(in: .whitespaces) != originalNombre
+    }
+
+    private var cambioTelefono: Bool {
+        editTelefono.trimmingCharacters(in: .whitespaces) != originalTelefono
+    }
+
+    private var cambioCorreo: Bool {
+        editCorreo.trimmingCharacters(in: .whitespaces) != originalCorreo
+    }
+
+    // MARK: - Iniciar / Cancelar edicion
+
+    private func iniciarEdicion() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isEditing = true
+        }
+    }
+
+    private func cancelarEdicion() {
+        // Restaurar valores originales
+        editNombre = originalNombre
+        editTelefono = originalTelefono
+        editCorreo = originalCorreo
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isEditing = false
+        }
+    }
+
+    // MARK: - Guardar cambios
+
+    private func guardarCambios() async {
+        guard hayCambios else { return }
+
+        await MainActor.run { isSaving = true }
+        defer { Task { @MainActor in isSaving = false } }
+
+        var mensajes: [String] = []
+        var huboError = false
+
+        // 1. Si cambio nombre o telefono -> Edge Function
+        if cambioNombre || cambioTelefono {
+            do {
+                let session = try await SupabaseManager.shared.client.auth.session
+                let token = session.accessToken
+
+                guard let url = URL(
+                    string: "https://aqopgqcpdmbmgkxmgvoy.supabase.co/functions/v1/update-user-profile"
+                ) else {
+                    huboError = true
+                    mensajes.append("URL de Edge Function invalida.")
+                    return
+                }
+
+                var body: [String: String] = [:]
+                if cambioNombre {
+                    body["nombre_completo"] = editNombre.trimmingCharacters(in: .whitespaces)
+                }
+                if cambioTelefono {
+                    body["telefono"] = editTelefono.trimmingCharacters(in: .whitespaces)
+                }
+
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                request.timeoutInterval = 15
+                request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw URLError(.badServerResponse)
+                }
+
+                if (200...299).contains(http.statusCode) {
+                    // Actualizar valores originales localmente
+                    if cambioNombre {
+                        originalNombre = editNombre.trimmingCharacters(in: .whitespaces)
+                    }
+                    if cambioTelefono {
+                        originalTelefono = editTelefono.trimmingCharacters(in: .whitespaces)
+                    }
+                    mensajes.append("Perfil actualizado correctamente.")
+                    print("[AjustesView] Perfil actualizado via Edge Function.")
+                } else {
+                    let respuesta = String(data: data, encoding: .utf8) ?? ""
+                    print("[AjustesView] Error al actualizar perfil (HTTP \(http.statusCode)): \(respuesta)")
+                    huboError = true
+                    mensajes.append("No se pudo actualizar el perfil.")
+                }
+            } catch {
+                print("[AjustesView] Error de red al actualizar perfil: \(error.localizedDescription)")
+                huboError = true
+                mensajes.append("Error de conexion al actualizar el perfil.")
+            }
+        }
+
+        // 2. Si cambio el correo -> Supabase Auth updateUser
+        if cambioCorreo {
+            do {
+                let nuevoCorreo = editCorreo.trimmingCharacters(in: .whitespaces)
+                try await SupabaseManager.shared.client.auth.update(
+                    user: UserAttributes(email: nuevoCorreo)
+                )
+                originalCorreo = nuevoCorreo
+                mensajes.append("Se envio un correo de confirmacion a \(nuevoCorreo). Revisa tu bandeja de entrada para completar el cambio.")
+                print("[AjustesView] Cambio de correo solicitado a: \(nuevoCorreo)")
+            } catch {
+                print("[AjustesView] Error al cambiar correo: \(error.localizedDescription)")
+                huboError = true
+                mensajes.append("No se pudo actualizar el correo electronico.")
+            }
+        }
+
+        // 3. Refrescar la lista de datos del perfil
+        await refrescarDatosPerfil()
+
+        // 4. Mostrar resultado
+        await MainActor.run {
+            mensajeAlerta = mensajes.joined(separator: "\n")
+            if huboError {
+                mostrarAlertaError = true
+            } else {
+                mostrarAlertaExito = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isEditing = false
+                }
+            }
+        }
+    }
+
     // MARK: - Carga de datos desde Supabase
 
     private func cargarDatos() async {
@@ -263,7 +544,7 @@ struct AjustesView: View {
             let session = try await SupabaseManager.shared.client.auth.session
             let userId = session.user.id
 
-            // Queries en paralelo: perfil + médicos vinculados
+            // Queries en paralelo: perfil + medicos vinculados
             async let perfilQuery: PerfilRow = SupabaseManager.shared.client
                 .from("perfiles")
                 .select()
@@ -283,7 +564,7 @@ struct AjustesView: View {
             let perfil = try await perfilQuery
             let asignaciones = try await medicosQuery
 
-            // Formatear sexo biológico
+            // Formatear sexo biologico
             let sexoDisplay: String
             switch perfil.sexoBiologico?.lowercased() {
             case "masculino": sexoDisplay = "Masculino"
@@ -304,8 +585,8 @@ struct AjustesView: View {
                 ("Nombre",              perfil.nombreCompleto),
                 ("Sexo",                sexoDisplay),
                 ("Fecha de Nacimiento", fechaDisplay),
-                ("Cédula",              perfil.cedula ?? "—"),
-                ("Teléfono",            perfil.telefono ?? "—"),
+                ("Cedula",              perfil.cedula ?? "—"),
+                ("Telefono",            perfil.telefono ?? "—"),
                 ("Correo",              perfil.correoElectronico),
             ]
 
@@ -322,24 +603,93 @@ struct AjustesView: View {
                 datosPerfil = datos
                 medicosVinculados = medicos
                 isLoading = false
+
+                // Inicializar campos editables y sus originales
+                editNombre = perfil.nombreCompleto
+                originalNombre = perfil.nombreCompleto
+
+                editTelefono = perfil.telefono ?? ""
+                originalTelefono = perfil.telefono ?? ""
+
+                editCorreo = perfil.correoElectronico
+                originalCorreo = perfil.correoElectronico
+
+                // Campos bloqueados
+                displaySexo = sexoDisplay
+                displayFechaNacimiento = fechaDisplay
+                displayCedula = perfil.cedula ?? "—"
             }
 
-            print("[AjustesView] ✅ Datos cargados. Médicos vinculados: \(medicos.count)")
+            print("[AjustesView] Datos cargados. Medicos vinculados: \(medicos.count)")
 
         } catch {
-            print("[AjustesView] ❌ Error: \(error.localizedDescription)")
+            print("[AjustesView] Error: \(error.localizedDescription)")
 
             await MainActor.run {
                 datosPerfil = [
                     ("Nombre", "—"), ("Sexo", "—"), ("Fecha de Nacimiento", "—"),
-                    ("Cédula", "—"), ("Teléfono", "—"), ("Correo", "—"),
+                    ("Cedula", "—"), ("Telefono", "—"), ("Correo", "—"),
                 ]
                 medicosVinculados = []
                 isLoading = false
             }
         }
     }
-    // MARK: - Desvinculación vía Edge Function
+
+    // MARK: - Refrescar datos del perfil (tras guardar)
+
+    private func refrescarDatosPerfil() async {
+        do {
+            let session = try await SupabaseManager.shared.client.auth.session
+            let userId = session.user.id
+
+            let perfil: PerfilRow = try await SupabaseManager.shared.client
+                .from("perfiles")
+                .select()
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
+
+            let sexoDisplay: String
+            switch perfil.sexoBiologico?.lowercased() {
+            case "masculino": sexoDisplay = "Masculino"
+            case "femenino": sexoDisplay = "Femenino"
+            default: sexoDisplay = perfil.sexoBiologico ?? "—"
+            }
+
+            let fechaDisplay: String
+            if let fechaStr = perfil.fechaNacimiento,
+               let fecha = Self.parserFechaNacimiento.date(from: fechaStr) {
+                fechaDisplay = Self.formateadorFechaNacimiento.string(from: fecha)
+            } else {
+                fechaDisplay = "—"
+            }
+
+            let datos: [(etiqueta: String, valor: String)] = [
+                ("Nombre",              perfil.nombreCompleto),
+                ("Sexo",                sexoDisplay),
+                ("Fecha de Nacimiento", fechaDisplay),
+                ("Cedula",              perfil.cedula ?? "—"),
+                ("Telefono",            perfil.telefono ?? "—"),
+                ("Correo",              perfil.correoElectronico),
+            ]
+
+            await MainActor.run {
+                datosPerfil = datos
+                editNombre = perfil.nombreCompleto
+                originalNombre = perfil.nombreCompleto
+                editTelefono = perfil.telefono ?? ""
+                originalTelefono = perfil.telefono ?? ""
+                editCorreo = perfil.correoElectronico
+                originalCorreo = perfil.correoElectronico
+            }
+        } catch {
+            print("[AjustesView] Error al refrescar perfil: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Desvinculacion via Edge Function
 
     private func desvincularMedico(_ medico: MedicoVinculado) async {
         desvinculando = true
@@ -372,23 +722,23 @@ struct AjustesView: View {
             guard let http = response as? HTTPURLResponse else { return }
 
             if (200...299).contains(http.statusCode) {
-                print("[AjustesView] ✅ Médico desvinculado: \(medico.nombre)")
+                print("[AjustesView] Medico desvinculado: \(medico.nombre)")
                 // Remover de la lista localmente (sin re-query)
                 await MainActor.run {
                     medicosVinculados.removeAll { $0.idMedico == medico.idMedico }
                 }
             } else {
                 let respuesta = String(data: data, encoding: .utf8) ?? ""
-                print("[AjustesView] ❌ Error desvinculando (HTTP \(http.statusCode)): \(respuesta)")
+                print("[AjustesView] Error desvinculando (HTTP \(http.statusCode)): \(respuesta)")
             }
 
         } catch {
-            print("[AjustesView] ❌ Error de red: \(error.localizedDescription)")
+            print("[AjustesView] Error de red: \(error.localizedDescription)")
         }
     }
 }
 
-// MARK: - Modelo de médico vinculado
+// MARK: - Modelo de medico vinculado
 
 private struct MedicoVinculado {
     let idMedico: UUID
@@ -417,7 +767,7 @@ private struct PerfilRow: Codable {
     }
 }
 
-/// Datos del médico obtenidos vía FK join en la query de asignaciones.
+/// Datos del medico obtenidos via FK join en la query de asignaciones.
 private struct MedicoPerfilData: Codable {
     let nombreCompleto: String?
     let telefono: String?
@@ -428,7 +778,7 @@ private struct MedicoPerfilData: Codable {
     }
 }
 
-/// Fila de `asignaciones_clinicas` con join al perfil del médico.
+/// Fila de `asignaciones_clinicas` con join al perfil del medico.
 private struct AsignacionConMedico: Codable {
     let idMedico: UUID
     let perfiles: MedicoPerfilData?
@@ -467,7 +817,7 @@ private struct PerfilRowView: View {
 
 // MARK: - MedicoRowView
 
-/// Fila del bloque de médicos: ícono + nombre/teléfono + botón desvincular.
+/// Fila del bloque de medicos: icono + nombre/telefono + boton desvincular.
 private struct MedicoRowView: View {
     let nombre: String
     let telefono: String
@@ -480,7 +830,7 @@ private struct MedicoRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Ícono circular
+            // Icono circular
             ZStack {
                 Circle()
                     .fill(grisFondo)
@@ -491,7 +841,7 @@ private struct MedicoRowView: View {
                     .foregroundStyle(teal)
             }
 
-            // Nombre y teléfono
+            // Nombre y telefono
             VStack(alignment: .leading, spacing: 2) {
                 Text(nombre)
                     .font(.system(size: 15, weight: .medium))
@@ -504,7 +854,7 @@ private struct MedicoRowView: View {
 
             Spacer()
 
-            // Botón desvincular
+            // Boton desvincular
             if desvinculando {
                 ProgressView()
                     .tint(.red)
