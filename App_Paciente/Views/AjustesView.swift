@@ -56,6 +56,10 @@ struct AjustesView: View {
     @State private var mostrarAlertaError = false
     @State private var mensajeAlerta = ""
 
+    // Estado para eliminar cuenta
+    @State private var mostrarAlertaEliminar = false
+    @State private var eliminandoCuenta = false
+
     // MARK: - Colores
 
     private let tealTueri = Color(red: 0.051, green: 0.424, blue: 0.471)
@@ -94,6 +98,8 @@ struct AjustesView: View {
                     bloqueMedicos
                         .padding(.bottom, 24)
                     bloqueCerrarSesion
+                        .padding(.bottom, 12)
+                    bloqueEliminarCuenta
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 40)
@@ -128,6 +134,14 @@ struct AjustesView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(mensajeAlerta)
+        }
+        .alert("Eliminar cuenta", isPresented: $mostrarAlertaEliminar) {
+            Button("Cancelar", role: .cancel) { }
+            Button("Eliminar", role: .destructive) {
+                Task { await eliminarCuenta() }
+            }
+        } message: {
+            Text("Esta accion es irreversible. Se borraran todos tus signos vitales y tu historial.")
         }
     }
 
@@ -395,6 +409,89 @@ struct AjustesView: View {
         }
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Bloque 4: Eliminar Cuenta
+
+    private var bloqueEliminarCuenta: some View {
+        Button(role: .destructive) {
+            mostrarAlertaEliminar = true
+        } label: {
+            HStack {
+                if eliminandoCuenta {
+                    ProgressView()
+                        .tint(.red)
+                } else {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                    Text("Eliminar cuenta")
+                        .font(.system(size: 16))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+        }
+        .disabled(eliminandoCuenta)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Eliminar cuenta via Edge Function
+
+    private func eliminarCuenta() async {
+        await MainActor.run { eliminandoCuenta = true }
+        defer { Task { @MainActor in eliminandoCuenta = false } }
+
+        do {
+            let session = try await SupabaseManager.shared.client.auth.session
+            let token = session.accessToken
+
+            guard let url = URL(
+                string: "https://aqopgqcpdmbmgkxmgvoy.supabase.co/functions/v1/delete-user-account"
+            ) else { return }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.timeoutInterval = 20
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let http = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
+            }
+
+            if (200...299).contains(http.statusCode) {
+                print("[AjustesView] Cuenta eliminada exitosamente.")
+
+                // Cerrar sesion local y limpiar estado
+                try await SupabaseManager.shared.client.auth.signOut()
+                HealthKitManager.shared.limpiarEstado()
+
+                await MainActor.run {
+                    isAuthenticated = false
+                    datosCompletados = false
+                    permisosCompletados = false
+                    tutorialCompletado = false
+                    dismiss()
+                }
+            } else {
+                let respuesta = String(data: data, encoding: .utf8) ?? ""
+                print("[AjustesView] Error al eliminar cuenta (HTTP \(http.statusCode)): \(respuesta)")
+                await MainActor.run {
+                    mensajeAlerta = "No se pudo eliminar la cuenta. Intenta de nuevo."
+                    mostrarAlertaError = true
+                }
+            }
+
+        } catch {
+            print("[AjustesView] Error de red al eliminar cuenta: \(error.localizedDescription)")
+            await MainActor.run {
+                mensajeAlerta = "Error de conexion. Verifica tu internet e intenta de nuevo."
+                mostrarAlertaError = true
+            }
+        }
     }
 
     // MARK: - Deteccion de cambios
