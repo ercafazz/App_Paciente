@@ -641,8 +641,10 @@ struct AjustesView: View {
             let session = try await SupabaseManager.shared.client.auth.session
             let userId = session.user.id
 
-            // Queries en paralelo: perfil + medicos vinculados
-            async let perfilQuery: PerfilRow = SupabaseManager.shared.client
+            print("[AjustesView] Cargando datos para paciente: \(userId.uuidString)")
+
+            // --- 1. Perfil del paciente ---
+            let perfil: PerfilRow = try await SupabaseManager.shared.client
                 .from("perfiles")
                 .select()
                 .eq("id", value: userId)
@@ -650,16 +652,40 @@ struct AjustesView: View {
                 .execute()
                 .value
 
-            async let medicosQuery: [AsignacionConMedico] = SupabaseManager.shared.client
+            // --- 2. Asignaciones activas (solo el id_medico, sin JOIN) ---
+            let asignaciones: [AsignacionSolo] = try await SupabaseManager.shared.client
                 .from("asignaciones_clinicas")
-                .select("id_medico, perfiles!asignaciones_clinicas_id_medico_fkey(nombre_completo, telefono)")
+                .select("id_medico")
                 .eq("id_paciente", value: userId)
                 .eq("estado", value: "activo")
                 .execute()
                 .value
 
-            let perfil = try await perfilQuery
-            let asignaciones = try await medicosQuery
+            print("[AjustesView] Asignaciones activas encontradas: \(asignaciones.count)")
+
+            // --- 3. Perfiles de los medicos vinculados (query separado) ---
+            var medicos: [MedicoVinculado] = []
+            if !asignaciones.isEmpty {
+                let idsMedicos = asignaciones.map { $0.idMedico.uuidString }
+                print("[AjustesView] IDs de medicos a buscar: \(idsMedicos)")
+
+                let perfilesMedicos: [PerfilMedicoRow] = try await SupabaseManager.shared.client
+                    .from("perfiles")
+                    .select("id, nombre_completo, telefono")
+                    .in("id", values: idsMedicos)
+                    .execute()
+                    .value
+
+                print("[AjustesView] Perfiles de medicos recuperados: \(perfilesMedicos.count)")
+
+                medicos = perfilesMedicos.map {
+                    MedicoVinculado(
+                        idMedico: $0.id,
+                        nombre: $0.nombreCompleto ?? "—",
+                        telefono: $0.telefono ?? "—"
+                    )
+                }
+            }
 
             // Formatear sexo biologico
             let sexoDisplay: String
@@ -687,15 +713,6 @@ struct AjustesView: View {
                 ("Correo",              perfil.correoElectronico),
             ]
 
-            let medicos = asignaciones.compactMap { asignacion -> MedicoVinculado? in
-                guard let medicoData = asignacion.perfiles else { return nil }
-                return MedicoVinculado(
-                    idMedico: asignacion.idMedico,
-                    nombre: medicoData.nombreCompleto ?? "—",
-                    telefono: medicoData.telefono ?? "—"
-                )
-            }
-
             await MainActor.run {
                 datosPerfil = datos
                 medicosVinculados = medicos
@@ -720,7 +737,8 @@ struct AjustesView: View {
             print("[AjustesView] Datos cargados. Medicos vinculados: \(medicos.count)")
 
         } catch {
-            print("[AjustesView] Error: \(error.localizedDescription)")
+            print("[AjustesView] ❌ Error cargando datos: \(error)")
+            print("[AjustesView] ❌ Descripcion: \(error.localizedDescription)")
 
             await MainActor.run {
                 datosPerfil = [
@@ -864,25 +882,25 @@ private struct PerfilRow: Codable {
     }
 }
 
-/// Datos del medico obtenidos via FK join en la query de asignaciones.
-private struct MedicoPerfilData: Codable {
+/// Fila de `asignaciones_clinicas` sin JOIN — solo el id del medico asignado.
+private struct AsignacionSolo: Codable {
+    let idMedico: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case idMedico = "id_medico"
+    }
+}
+
+/// Fila de `perfiles` acotada a los campos necesarios para mostrar un medico vinculado.
+private struct PerfilMedicoRow: Codable {
+    let id: UUID
     let nombreCompleto: String?
     let telefono: String?
 
     enum CodingKeys: String, CodingKey {
+        case id
         case nombreCompleto = "nombre_completo"
         case telefono
-    }
-}
-
-/// Fila de `asignaciones_clinicas` con join al perfil del medico.
-private struct AsignacionConMedico: Codable {
-    let idMedico: UUID
-    let perfiles: MedicoPerfilData?
-
-    enum CodingKeys: String, CodingKey {
-        case idMedico = "id_medico"
-        case perfiles
     }
 }
 
