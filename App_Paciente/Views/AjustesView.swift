@@ -652,40 +652,8 @@ struct AjustesView: View {
                 .execute()
                 .value
 
-            // --- 2. Asignaciones activas (solo el id_medico, sin JOIN) ---
-            let asignaciones: [AsignacionSolo] = try await SupabaseManager.shared.client
-                .from("asignaciones_clinicas")
-                .select("id_medico")
-                .eq("id_paciente", value: userId)
-                .eq("estado", value: "activo")
-                .execute()
-                .value
-
-            print("[AjustesView] Asignaciones activas encontradas: \(asignaciones.count)")
-
-            // --- 3. Perfiles de los medicos vinculados (query separado) ---
-            var medicos: [MedicoVinculado] = []
-            if !asignaciones.isEmpty {
-                let idsMedicos = asignaciones.map { $0.idMedico.uuidString }
-                print("[AjustesView] IDs de medicos a buscar: \(idsMedicos)")
-
-                let perfilesMedicos: [PerfilMedicoRow] = try await SupabaseManager.shared.client
-                    .from("perfiles")
-                    .select("id, nombre_completo, telefono")
-                    .in("id", values: idsMedicos)
-                    .execute()
-                    .value
-
-                print("[AjustesView] Perfiles de medicos recuperados: \(perfilesMedicos.count)")
-
-                medicos = perfilesMedicos.map {
-                    MedicoVinculado(
-                        idMedico: $0.id,
-                        nombre: $0.nombreCompleto ?? "—",
-                        telefono: $0.telefono ?? "—"
-                    )
-                }
-            }
+            // --- 2. Medicos vinculados (JOIN directo via PostgREST) ---
+            let medicos = await Self.cargarMedicosVinculados(idPaciente: userId)
 
             // Formatear sexo biologico
             let sexoDisplay: String
@@ -748,6 +716,66 @@ struct AjustesView: View {
                 medicosVinculados = []
                 isLoading = false
             }
+        }
+    }
+
+    // MARK: - Cargar medicos vinculados (JOIN directo via PostgREST)
+
+    /// Trae la lista de medicos vinculados al paciente haciendo un JOIN
+    /// desde `asignaciones_clinicas` hacia `perfiles` a traves de la FK
+    /// `id_medico`. Usa la sintaxis de column-hint de PostgREST
+    /// (`perfiles!id_medico(...)`), que es mas robusta que apoyarse en el
+    /// nombre del constraint — solo requiere que el nombre de la columna
+    /// foranea (`id_medico`) exista en la tabla.
+    ///
+    /// - Filtros:
+    ///   - `id_paciente = userId`
+    ///   - `estado = 'activo'` (ignora los 'inactivo' tras una desvinculacion)
+    private static func cargarMedicosVinculados(idPaciente: UUID) async -> [MedicoVinculado] {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("asignaciones_clinicas")
+                .select("""
+                    id_medico,
+                    medico:perfiles!id_medico(id, nombre_completo, telefono)
+                """)
+                .eq("id_paciente", value: idPaciente)
+                .eq("estado", value: "activo")
+                .execute()
+
+            // Log del JSON crudo — util para ver EXACTAMENTE que devuelve PostgREST
+            // (si un medico viene como `null` generalmente es un bloqueo de RLS en `perfiles`)
+            if let raw = String(data: response.data, encoding: .utf8) {
+                print("[AjustesView] 🔍 Raw asignaciones JSON: \(raw)")
+            }
+
+            let decoder = JSONDecoder()
+            let asignaciones = try decoder.decode(
+                [AsignacionConMedico].self,
+                from: response.data
+            )
+
+            print("[AjustesView] ✅ Asignaciones activas decodificadas: \(asignaciones.count)")
+
+            let medicos: [MedicoVinculado] = asignaciones.compactMap { asignacion in
+                guard let medico = asignacion.medico else {
+                    print("[AjustesView] ⚠️ Asignacion con id_medico=\(asignacion.idMedico) trajo `medico: null` (probable RLS en perfiles).")
+                    return nil
+                }
+                return MedicoVinculado(
+                    idMedico: asignacion.idMedico,
+                    nombre: medico.nombreCompleto ?? "—",
+                    telefono: medico.telefono ?? "—"
+                )
+            }
+
+            print("[AjustesView] ✅ Medicos listos para renderizar: \(medicos.count)")
+            return medicos
+
+        } catch {
+            print("[AjustesView] ❌ Error cargando medicos: \(error)")
+            print("[AjustesView] ❌ Descripcion: \(error.localizedDescription)")
+            return []
         }
     }
 
@@ -882,18 +910,25 @@ private struct PerfilRow: Codable {
     }
 }
 
-/// Fila de `asignaciones_clinicas` sin JOIN — solo el id del medico asignado.
-private struct AsignacionSolo: Codable {
+/// Fila de `asignaciones_clinicas` con el perfil del medico embebido via JOIN.
+/// El alias `medico:` en el select hace que PostgREST devuelva el perfil bajo
+/// esa key y no bajo `perfiles` (lo cual evita colisiones con el JOIN inverso
+/// si mas adelante se necesita traer tambien al paciente).
+private struct AsignacionConMedico: Codable {
     let idMedico: UUID
+    let medico: MedicoEmbed?
 
     enum CodingKeys: String, CodingKey {
         case idMedico = "id_medico"
+        case medico
     }
 }
 
-/// Fila de `perfiles` acotada a los campos necesarios para mostrar un medico vinculado.
-private struct PerfilMedicoRow: Codable {
-    let id: UUID
+/// Subconjunto del perfil del medico embebido en la asignacion.
+/// Todos los campos son opcionales para tolerar bloqueos parciales de RLS
+/// o datos incompletos en la tabla `perfiles`.
+private struct MedicoEmbed: Codable {
+    let id: UUID?
     let nombreCompleto: String?
     let telefono: String?
 

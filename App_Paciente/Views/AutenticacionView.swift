@@ -9,6 +9,7 @@ import SwiftUI
 import GoogleSignIn
 import Supabase
 import Auth
+import CryptoKit
 /// Pantalla unificada de autenticación que combina Inicio de Sesión y Registro
 /// en un solo componente con pestañas interactivas.
 /// Corresponde a las Screens 1 y 2 del diseño de Tuēri.
@@ -639,10 +640,21 @@ struct AutenticacionView: View {
             )
             GIDSignIn.sharedInstance.configuration = config
 
-            // 3. Ejecutar el flujo nativo de Google Sign-In
-            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
+            // 3. Generar nonce para prevenir replay attacks (OIDC).
+            //    - rawNonce: se envía a Supabase (GoTrue lo hashea y compara con el claim)
+            //    - hashedNonce: se envía a Google (lo incrusta como claim "nonce" en el id_token)
+            let rawNonce = Self.generarNonceAleatorio()
+            let hashedNonce = Self.sha256(rawNonce)
 
-            // 4. Extraer el idToken de Google
+            // 4. Ejecutar el flujo nativo de Google Sign-In, pasando el nonce HASHEADO
+            let result = try await GIDSignIn.sharedInstance.signIn(
+                withPresenting: rootVC,
+                hint: nil,
+                additionalScopes: nil,
+                nonce: hashedNonce
+            )
+
+            // 5. Extraer el idToken de Google
             guard let idToken = result.user.idToken?.tokenString else {
                 mensajeError = "No se pudo obtener el token de Google."
                 mostrarAlertaError = true
@@ -651,23 +663,27 @@ struct AutenticacionView: View {
 
             print("[AutenticacionView] ✅ Google Sign-In exitoso: \(result.user.profile?.email ?? "sin email")")
 
-            // 5. Autenticar con Supabase usando el idToken de Google
+            // 6. Autenticar con Supabase usando el idToken de Google + el nonce CRUDO
             let session = try await SupabaseManager.shared.client.auth.signInWithIdToken(
-                credentials: .init(provider: .google, idToken: idToken)
+                credentials: .init(
+                    provider: .google,
+                    idToken: idToken,
+                    nonce: rawNonce
+                )
             )
 
             print("[AutenticacionView] ✅ Supabase auth con Google exitoso: \(session.user.email ?? "sin email")")
 
-            // 6. Guardar tokens para envío ligero en background
+            // 7. Guardar tokens para envío ligero en background
             HealthKitManager.shared.guardarTokensSesion(
                 access: session.accessToken,
                 refresh: session.refreshToken
             )
 
-            // 7. Conectar la tubería de HealthKit con el ID del paciente
+            // 8. Conectar la tubería de HealthKit con el ID del paciente
             HealthKitManager.shared.idPaciente = session.user.id
 
-            // 8. Verificar si el perfil ya existe (mismo flujo que email/password)
+            // 9. Verificar si el perfil ya existe (mismo flujo que email/password)
             let response = try? await SupabaseManager.shared.client
                 .from("perfiles")
                 .select()
@@ -703,6 +719,44 @@ struct AutenticacionView: View {
             mostrarAlertaError = true
             print("[AutenticacionView] ❌ Error Google Sign-In: \(error)")
         }
+    }
+
+    // MARK: - Nonce (prevención de replay attacks en OIDC)
+
+    /// Genera un nonce aleatorio en texto plano (crudo). Este valor se guarda en memoria
+    /// y se envía a Supabase sin hashear. Su hash SHA-256 es el que se le pasa a Google.
+    private static func generarNonceAleatorio(longitud: Int = 32) -> String {
+        precondition(longitud > 0)
+        let caracteres: [Character] = Array(
+            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._"
+        )
+        var resultado = ""
+        var restante = longitud
+
+        while restante > 0 {
+            var bytes = [UInt8](repeating: 0, count: 16)
+            let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+            guard status == errSecSuccess else {
+                fatalError("No se pudo generar bytes aleatorios para el nonce: \(status)")
+            }
+
+            for byte in bytes where restante > 0 {
+                if byte < caracteres.count {
+                    resultado.append(caracteres[Int(byte)])
+                    restante -= 1
+                }
+            }
+        }
+
+        return resultado
+    }
+
+    /// Calcula el SHA-256 (en hexadecimal) de un string. Se usa para convertir el
+    /// nonce crudo en el hash que Google incrustará como claim en el id_token.
+    private static func sha256(_ entrada: String) -> String {
+        let data = Data(entrada.utf8)
+        let hash = SHA256.hash(data: data)
+        return hash.map { String(format: "%02x", $0) }.joined()
     }
 
     /// Traduce errores de Google Sign-In a mensajes amigables.
