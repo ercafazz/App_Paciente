@@ -96,11 +96,9 @@ struct ContentView: View {
 
         print("[ContentView] Sesión activa: \(session.user.email ?? "sin email")")
 
-        // 2. Guardar tokens + asignar idPaciente para la tubería de HealthKit
-        HealthKitManager.shared.guardarTokensSesion(
-            access: session.accessToken,
-            refresh: session.refreshToken
-        )
+        // 2. Asignar idPaciente para la tubería de HealthKit.
+        //    Los tokens los maneja exclusivamente el SDK de Supabase en
+        //    Keychain; EnvioLigero los consulta bajo demanda (v5.7).
         HealthKitManager.shared.idPaciente = session.user.id
 
         // 3. Verificar si el perfil existe en la BD

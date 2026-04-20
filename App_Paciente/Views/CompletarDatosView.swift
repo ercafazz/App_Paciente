@@ -47,6 +47,26 @@ struct CompletarDatosView: View {
         case femenino = "Femenino"
     }
 
+    // MARK: - Tipo de cédula (nacionalidad)
+
+    /// Prefijo de la cédula venezolana/extranjera. El `rawValue` es el
+    /// carácter que se concatena antes del número al enviar a Supabase
+    /// (ej. "V-12345678", "E-87654321").
+    private enum TipoCedula: String, CaseIterable, Identifiable {
+        case venezolano = "V"
+        case extranjero = "E"
+
+        var id: String { rawValue }
+
+        /// Etiqueta larga para el menú desplegable.
+        var descripcion: String {
+            switch self {
+            case .venezolano: return "Venezolano"
+            case .extranjero: return "Extranjero"
+            }
+        }
+    }
+
     // MARK: - Bindings
 
     /// Notifica al flujo principal que el paciente completó sus datos.
@@ -54,6 +74,7 @@ struct CompletarDatosView: View {
 
     // MARK: - Estado del formulario
 
+    @State private var tipoCedula: TipoCedula = .venezolano
     @State private var cedula = ""
     @State private var telefono = ""
     @State private var dia = ""
@@ -99,12 +120,7 @@ struct CompletarDatosView: View {
             Text(mensajeError)
         }
         .task {
-            // Cargar el nombre del usuario desde los metadatos de Auth
-            if let session = try? await SupabaseManager.shared.client.auth.session,
-               let nombre = session.user.userMetadata["nombre_completo"]?.stringValue {
-                let primerNombre = nombre.components(separatedBy: " ").first ?? nombre
-                nombreUsuario = primerNombre
-            }
+            await cargarNombreUsuario()
         }
     }
 
@@ -166,16 +182,63 @@ struct CompletarDatosView: View {
         VStack(alignment: .leading, spacing: 8) {
             etiqueta("CÉDULA DE IDENTIDAD")
 
-            TextField("V-12345678", text: $cedula)
-                .font(.system(size: 15))
-                .foregroundStyle(grisTitulo)
-                .padding(.horizontal, 16)
-                .frame(height: 48)
-                .background(grisFondoCampo)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .keyboardType(.numberPad)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
+            HStack(spacing: 10) {
+                // ── Selector V / E ──
+                // `Menu` muestra un popover nativo con las dos opciones.
+                // En el label solo se ve la letra seleccionada (V o E)
+                // + chevron, imitando el diseño de referencia.
+                Menu {
+                    ForEach(TipoCedula.allCases) { opcion in
+                        Button {
+                            tipoCedula = opcion
+                        } label: {
+                            if tipoCedula == opcion {
+                                Label(opcion.descripcion, systemImage: "checkmark")
+                            } else {
+                                Text(opcion.descripcion)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(tipoCedula.rawValue)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(grisTitulo)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(grisTexto)
+                    }
+                    .frame(width: 64, height: 48)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(tealTueri, lineWidth: 1.5)
+                    )
+                }
+                .accessibilityLabel("Tipo de cédula")
+                .accessibilityHint("Selecciona V para venezolano o E para extranjero")
+
+                // ── Input numérico ──
+                // `onChange` filtra cualquier carácter no numérico para
+                // que el valor persistido sea exclusivamente dígitos.
+                // El prefijo "V-"/"E-" se añade al enviar a Supabase.
+                TextField("12439016", text: $cedula)
+                    .font(.system(size: 15))
+                    .foregroundStyle(grisTitulo)
+                    .padding(.horizontal, 16)
+                    .frame(height: 48)
+                    .frame(maxWidth: .infinity)
+                    .background(grisFondoCampo)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .keyboardType(.numberPad)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onChange(of: cedula) { _, newValue in
+                        let soloDigitos = newValue.filter(\.isNumber)
+                        if soloDigitos != newValue {
+                            cedula = soloDigitos
+                        }
+                    }
+            }
         }
     }
 
@@ -355,6 +418,80 @@ struct CompletarDatosView: View {
         return cedulaValida && telefonoValido && fechaValida && sexoValido
     }
 
+    // MARK: - Carga del nombre del usuario (blindada)
+
+    /// Resuelve el primer nombre del usuario probando varias fuentes de metadata.
+    ///
+    /// **Por qué es tan defensivo**:
+    /// La lectura anterior fallaba en un caso puntual — usuario recién
+    /// registrado con email/password — porque terminaba con `nombre_completo = ""`
+    /// en el JWT. El valor llegaba vacío por una combinación de:
+    ///
+    ///   1. Los claims OIDC que Supabase pobla automáticamente cuando el
+    ///      proveedor es Google (`full_name`, `name`, `given_name`, `picture`)
+    ///      NO existen para email/password → cualquier normalización backend
+    ///      (trigger `handle_new_user` que copia `full_name → nombre_completo`,
+    ///      por ejemplo) termina con string vacío.
+    ///   2. El código original no filtraba el caso string-vacío-pero-presente:
+    ///      `"".components(separatedBy: " ").first == ""` → el saludo quedaba
+    ///      como "¡Casi listo, !".
+    ///
+    /// Estrategia actual — probar en orden y quedarse con el primer candidato
+    /// NO vacío:
+    ///   · `nombre_completo`  (lo que mete nuestro signUp manual)
+    ///   · `full_name`        (lo que mete Google OIDC)
+    ///   · `name`             (fallback de Google OIDC)
+    ///   · prefijo del email  (último recurso: "juan@mail.com" → "Juan")
+    ///   · "Usuario"          (valor hardcodeado por si TODO falla)
+    private func cargarNombreUsuario() async {
+        guard let session = try? await SupabaseManager.shared.client.auth.session else {
+            print("[CompletarDatosView] ⚠️ Sin sesión al cargar nombreUsuario.")
+            return
+        }
+
+        let meta = session.user.userMetadata
+
+        // 🔍 DIAGNÓSTICO TEMPORAL — borra este bloque cuando confirmes la causa.
+        // Imprime TODO lo que venga en userMetadata para comparar flujos
+        // (email/password vs Google) y saber qué clave contiene el nombre.
+        print("[CompletarDatosView] 🔍 userMetadata dump:")
+        print("   provider (app_metadata): \(session.user.appMetadata["provider"]?.stringValue ?? "?")")
+        print("   email: \(session.user.email ?? "?")")
+        print("   claves en userMetadata: \(Array(meta.keys).sorted())")
+        for (clave, valor) in meta {
+            print("     · \(clave) = \(valor)")
+        }
+
+        // Candidatos en orden de preferencia. Se filtran strings vacíos/whitespace.
+        let candidatos: [String?] = [
+            meta["nombre_completo"]?.stringValue,
+            meta["full_name"]?.stringValue,
+            meta["name"]?.stringValue,
+            session.user.email.flatMap { email in
+                email.split(separator: "@").first.map { String($0).capitalized }
+            }
+        ]
+
+        let nombreCrudo = candidatos
+            .compactMap { $0 }
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+        guard let nombre = nombreCrudo else {
+            print("[CompletarDatosView] ⚠️ Ningún candidato de nombre disponible. Usando default.")
+            return
+        }
+
+        // Extraer el primer token no vacío (blindado contra espacios duplicados).
+        let primerNombre = nombre
+            .components(separatedBy: " ")
+            .first { !$0.isEmpty } ?? nombre
+
+        await MainActor.run {
+            nombreUsuario = primerNombre
+        }
+        print("[CompletarDatosView] 👤 Saludo resuelto como: \(primerNombre)")
+    }
+
     // MARK: - Lógica (Supabase INSERT)
 
     /// Obtiene la sesión actual, construye el perfil y lo inserta en la tabla `perfiles`.
@@ -382,12 +519,19 @@ struct CompletarDatosView: View {
             let fechaFormateada = "\(anio)-\(mesPad)-\(diaPad)"
 
             // 4. Construir el perfil
+            //    La cédula se envía con el prefijo de nacionalidad:
+            //      · Venezolano → "V-12345678"
+            //      · Extranjero → "E-12345678"
+            //    El input solo captura dígitos; el prefijo lo añadimos aquí.
+            let cedulaNumerica = cedula.trimmingCharacters(in: .whitespaces)
+            let cedulaConPrefijo = "\(tipoCedula.rawValue)-\(cedulaNumerica)"
+
             let perfilInsert = PerfilInsert(
                 id: userId,
                 rol: "paciente",
                 nombreCompleto: nombre,
                 correoElectronico: email,
-                cedula: cedula.trimmingCharacters(in: .whitespaces),
+                cedula: cedulaConPrefijo,
                 telefono: telefono.trimmingCharacters(in: .whitespaces),
                 fechaNacimiento: fechaFormateada,
                 sexoBiologico: sexoSeleccionado?.rawValue ?? ""
@@ -402,7 +546,7 @@ struct CompletarDatosView: View {
             print("[CompletarDatosView] ✅ Perfil insertado en Supabase:")
             print("  ID: \(userId)")
             print("  Nombre: \(nombre)")
-            print("  Cédula: \(cedula)")
+            print("  Cédula: \(cedulaConPrefijo)")
             print("  Fecha: \(fechaFormateada)")
             print("  Sexo: \(sexoSeleccionado?.rawValue ?? "N/A")")
 

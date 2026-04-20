@@ -39,17 +39,19 @@ struct AjustesView: View {
     // Campos editables (temporales mientras se edita)
     @State private var editNombre = ""
     @State private var editTelefono = ""
-    @State private var editCorreo = ""
 
     // Valores originales para detectar cambios
     @State private var originalNombre = ""
     @State private var originalTelefono = ""
-    @State private var originalCorreo = ""
 
     // Campos bloqueados (solo lectura, siempre)
+    // Nota: `displayCorreo` se agregó aquí al decidir que el cambio de
+    // correo tiene que pasar por un flujo de verificación más robusto
+    // que el `auth.update(email:)` del SDK — por ahora es solo lectura.
     @State private var displaySexo = "—"
     @State private var displayFechaNacimiento = "—"
     @State private var displayCedula = "—"
+    @State private var displayCorreo = "—"
 
     // Alertas
     @State private var mostrarAlertaExito = false
@@ -59,6 +61,9 @@ struct AjustesView: View {
     // Estado para eliminar cuenta
     @State private var mostrarAlertaEliminar = false
     @State private var eliminandoCuenta = false
+
+    // Estado para cerrar sesion
+    @State private var mostrarAlertaCerrarSesion = false
 
     // MARK: - Colores
 
@@ -134,6 +139,14 @@ struct AjustesView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(mensajeAlerta)
+        }
+        .alert("Cerrar sesión", isPresented: $mostrarAlertaCerrarSesion) {
+            Button("Cancelar", role: .cancel) { }
+            Button("Cerrar sesión", role: .destructive) {
+                Task { await cerrarSesion() }
+            }
+        } message: {
+            Text("Deberás iniciar sesión nuevamente para acceder a tu cuenta.")
         }
         .alert("Eliminar cuenta", isPresented: $mostrarAlertaEliminar) {
             Button("Cancelar", role: .cancel) { }
@@ -252,7 +265,10 @@ struct AjustesView: View {
                     perfilRowEditable(etiqueta: "Telefono", texto: $editTelefono, teclado: .phonePad)
                     Divider().background(grisBorde).padding(.horizontal, 18)
 
-                    perfilRowEditable(etiqueta: "Correo", texto: $editCorreo, teclado: .emailAddress)
+                    // Correo bloqueado: el cambio de email requiere un
+                    // flujo de verificación server-side (no `auth.update`
+                    // directo), así que por ahora se muestra como read-only.
+                    perfilRowBloqueado(etiqueta: "Correo", valor: displayCorreo)
 
                 } else {
                     // === MODO LECTURA ===
@@ -386,20 +402,7 @@ struct AjustesView: View {
 
     private var bloqueCerrarSesion: some View {
         Button {
-            Task {
-                do {
-                    try await SupabaseManager.shared.client.auth.signOut()
-                    HealthKitManager.shared.limpiarEstado()
-                    isAuthenticated = false
-                    datosCompletados = false
-                    permisosCompletados = false
-                    tutorialCompletado = false
-                    dismiss()
-                    print("[AjustesView] Sesion cerrada exitosamente.")
-                } catch {
-                    print("[AjustesView] Error al cerrar sesion: \(error.localizedDescription)")
-                }
-            }
+            mostrarAlertaCerrarSesion = true
         } label: {
             Text("Cerrar Sesion")
                 .font(.system(size: 16))
@@ -434,6 +437,25 @@ struct AjustesView: View {
         .disabled(eliminandoCuenta)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Cerrar sesion
+
+    private func cerrarSesion() async {
+        do {
+            try await SupabaseManager.shared.client.auth.signOut()
+            HealthKitManager.shared.limpiarEstado()
+            await MainActor.run {
+                isAuthenticated = false
+                datosCompletados = false
+                permisosCompletados = false
+                tutorialCompletado = false
+                dismiss()
+            }
+            print("[AjustesView] Sesion cerrada exitosamente.")
+        } catch {
+            print("[AjustesView] Error al cerrar sesion: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Eliminar cuenta via Edge Function
@@ -498,8 +520,7 @@ struct AjustesView: View {
 
     private var hayCambios: Bool {
         editNombre.trimmingCharacters(in: .whitespaces) != originalNombre ||
-        editTelefono.trimmingCharacters(in: .whitespaces) != originalTelefono ||
-        editCorreo.trimmingCharacters(in: .whitespaces) != originalCorreo
+        editTelefono.trimmingCharacters(in: .whitespaces) != originalTelefono
     }
 
     private var cambioNombre: Bool {
@@ -508,10 +529,6 @@ struct AjustesView: View {
 
     private var cambioTelefono: Bool {
         editTelefono.trimmingCharacters(in: .whitespaces) != originalTelefono
-    }
-
-    private var cambioCorreo: Bool {
-        editCorreo.trimmingCharacters(in: .whitespaces) != originalCorreo
     }
 
     // MARK: - Iniciar / Cancelar edicion
@@ -526,7 +543,6 @@ struct AjustesView: View {
         // Restaurar valores originales
         editNombre = originalNombre
         editTelefono = originalTelefono
-        editCorreo = originalCorreo
         withAnimation(.easeInOut(duration: 0.2)) {
             isEditing = false
         }
@@ -600,27 +616,10 @@ struct AjustesView: View {
             }
         }
 
-        // 2. Si cambio el correo -> Supabase Auth updateUser
-        if cambioCorreo {
-            do {
-                let nuevoCorreo = editCorreo.trimmingCharacters(in: .whitespaces)
-                try await SupabaseManager.shared.client.auth.update(
-                    user: UserAttributes(email: nuevoCorreo)
-                )
-                originalCorreo = nuevoCorreo
-                mensajes.append("Se envio un correo de confirmacion a \(nuevoCorreo). Revisa tu bandeja de entrada para completar el cambio.")
-                print("[AjustesView] Cambio de correo solicitado a: \(nuevoCorreo)")
-            } catch {
-                print("[AjustesView] Error al cambiar correo: \(error.localizedDescription)")
-                huboError = true
-                mensajes.append("No se pudo actualizar el correo electronico.")
-            }
-        }
-
-        // 3. Refrescar la lista de datos del perfil
+        // 2. Refrescar la lista de datos del perfil
         await refrescarDatosPerfil()
 
-        // 4. Mostrar resultado
+        // 3. Mostrar resultado
         await MainActor.run {
             mensajeAlerta = mensajes.joined(separator: "\n")
             if huboError {
@@ -693,13 +692,11 @@ struct AjustesView: View {
                 editTelefono = perfil.telefono ?? ""
                 originalTelefono = perfil.telefono ?? ""
 
-                editCorreo = perfil.correoElectronico
-                originalCorreo = perfil.correoElectronico
-
                 // Campos bloqueados
                 displaySexo = sexoDisplay
                 displayFechaNacimiento = fechaDisplay
                 displayCedula = perfil.cedula ?? "—"
+                displayCorreo = perfil.correoElectronico
             }
 
             print("[AjustesView] Datos cargados. Medicos vinculados: \(medicos.count)")
@@ -824,8 +821,7 @@ struct AjustesView: View {
                 originalNombre = perfil.nombreCompleto
                 editTelefono = perfil.telefono ?? ""
                 originalTelefono = perfil.telefono ?? ""
-                editCorreo = perfil.correoElectronico
-                originalCorreo = perfil.correoElectronico
+                displayCorreo = perfil.correoElectronico
             }
         } catch {
             print("[AjustesView] Error al refrescar perfil: \(error.localizedDescription)")

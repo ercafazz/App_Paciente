@@ -324,17 +324,27 @@ struct DashboardView: View {
                 .execute()
                 .value
 
-            async let nombreQuery: String? = {
-                if let meta = session.user.userMetadata["nombre_completo"]?.stringValue {
-                    return meta.components(separatedBy: " ").first ?? meta
-                }
-                return nil
-            }()
+            // Fuente de verdad para el nombre: tabla `perfiles`.
+            // `userMetadata` no se actualiza cuando el usuario edita su
+            // perfil en Ajustes, y con Google OAuth la clave es `full_name`
+            // / `name`, no `nombre_completo`. Por eso consultamos la tabla.
+            async let perfilQuery: NombrePerfilRow? = try? await SupabaseManager.shared.client
+                .from("perfiles")
+                .select("nombre_completo")
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
 
             let lotes = try await loteQuery
             let spo2Rows = try await spo2Query
             let frRows = try await frQuery
-            let nombre = await nombreQuery
+            let perfilNombre = await perfilQuery
+            let nombre = Self.resolverPrimerNombre(
+                perfil: perfilNombre?.nombreCompleto,
+                userMetadata: session.user.userMetadata,
+                email: session.user.email
+            )
 
             await MainActor.run {
                 ultimoLote = lotes.first
@@ -345,7 +355,7 @@ struct DashboardView: View {
                     LecturaPuntualDisplay(valor: $0.valor, fecha: $0.fechaLectura)
                 }
                 idPaciente = userId
-                if let nombre { nombreUsuario = nombre }
+                if let nombre, !nombre.isEmpty { nombreUsuario = nombre }
                 isLoading = false
             }
 
@@ -357,6 +367,49 @@ struct DashboardView: View {
                 isLoading = false
             }
         }
+    }
+}
+
+// MARK: - Resolución del primer nombre
+
+extension DashboardView {
+    /// Devuelve el primer nombre a mostrar en la cabecera.
+    /// Prioridad: `perfiles.nombre_completo` → userMetadata
+    /// (`nombre_completo` / `full_name` / `name`) → prefijo del email.
+    fileprivate static func resolverPrimerNombre(
+        perfil: String?,
+        userMetadata: [String: AnyJSON],
+        email: String?
+    ) -> String? {
+        let candidatos: [String?] = [
+            perfil,
+            userMetadata["nombre_completo"]?.stringValue,
+            userMetadata["full_name"]?.stringValue,
+            userMetadata["name"]?.stringValue,
+            userMetadata["given_name"]?.stringValue,
+        ]
+
+        for caso in candidatos {
+            let limpio = caso?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !limpio.isEmpty else { continue }
+            return limpio.components(separatedBy: " ").first ?? limpio
+        }
+
+        if let email, let prefijo = email.split(separator: "@").first {
+            return prefijo.prefix(1).uppercased() + prefijo.dropFirst()
+        }
+
+        return nil
+    }
+}
+
+// MARK: - Modelo para consulta de nombre
+
+private struct NombrePerfilRow: Codable {
+    let nombreCompleto: String?
+
+    enum CodingKeys: String, CodingKey {
+        case nombreCompleto = "nombre_completo"
     }
 }
 
@@ -406,41 +459,79 @@ private struct VitalRowView: View {
     let colores: (Color, Color, Color)
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(colores.2)
-                    .frame(width: 40, height: 40)
+        ViewThatFits {
+            // Opción 1: layout horizontal (una sola fila) — se usa
+            // cuando el texto cabe sin cortes.
+            HStack(spacing: 14) {
+                iconoView
 
-                Image(systemName: signo.icono)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(signo.colorIcono)
+                Text(signo.etiqueta)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(colores.0)
+                    .layoutPriority(1)
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    valorView
+
+                    Text(signo.detalleTemporal)
+                        .font(.system(size: 12))
+                        .foregroundStyle(colores.1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
 
-            Text(signo.etiqueta)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(colores.0)
+            // Opción 2: layout vertical con la fecha en su propia
+            // línea inferior — se activa cuando el detalle temporal
+            // es demasiado largo (p. ej. cuando cruza días).
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 14) {
+                    iconoView
 
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text(signo.valor)
-                        .font(.system(size: 20, weight: .bold))
+                    Text(signo.etiqueta)
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(colores.0)
 
-                    Text(signo.unidad)
-                        .font(.system(size: 14))
-                        .foregroundStyle(colores.1)
+                    Spacer()
+
+                    valorView
                 }
 
                 Text(signo.detalleTemporal)
                     .font(.system(size: 12))
                     .foregroundStyle(colores.1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+    }
+
+    private var iconoView: some View {
+        ZStack {
+            Circle()
+                .fill(colores.2)
+                .frame(width: 40, height: 40)
+
+            Image(systemName: signo.icono)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(signo.colorIcono)
+        }
+    }
+
+    private var valorView: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(signo.valor)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(colores.0)
+
+            Text(signo.unidad)
+                .font(.system(size: 14))
+                .foregroundStyle(colores.1)
+        }
     }
 }
 
