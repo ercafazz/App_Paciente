@@ -505,10 +505,26 @@ struct CompletarDatosView: View {
             let userId = session.user.id
             let email = session.user.email ?? ""
 
-            // 2. Extraer el nombre guardado en metadatos durante el signUp
+            // 2. Resolver el nombre desde userMetadata con fallback chain.
+            //    · email+password → lo guardamos en `nombre_completo` al hacer signUp.
+            //    · Google OAuth → viene en `full_name` / `name` / `given_name`.
+            //    · Último recurso: prefijo del email capitalizado.
+            let meta = session.user.userMetadata
+            let candidatos: [String?] = [
+                meta["nombre_completo"]?.stringValue,
+                meta["full_name"]?.stringValue,
+                meta["name"]?.stringValue,
+                meta["given_name"]?.stringValue,
+            ]
+            let nombreResuelto = candidatos
+                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .first(where: { !$0.isEmpty })
+
             let nombre: String
-            if let metaNombre = session.user.userMetadata["nombre_completo"]?.stringValue {
-                nombre = metaNombre
+            if let nombreResuelto {
+                nombre = nombreResuelto
+            } else if let prefijo = email.split(separator: "@").first, !prefijo.isEmpty {
+                nombre = prefijo.prefix(1).uppercased() + prefijo.dropFirst()
             } else {
                 nombre = "Paciente"
             }
