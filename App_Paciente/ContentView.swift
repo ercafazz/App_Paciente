@@ -101,15 +101,48 @@ struct ContentView: View {
         //    Keychain; EnvioLigero los consulta bajo demanda (v5.7).
         HealthKitManager.shared.idPaciente = session.user.id
 
-        // 3. Verificar si el perfil existe en la BD
-        let perfilExiste = (try? await SupabaseManager.shared.client
+        // 3. Verificar si el perfil existe en la BD y validar el rol.
+        //    Esto cubre el caso "sesión persistida en Keychain": un médico
+        //    que ya logueó una vez (vía Google con correo compartido)
+        //    re-abriría la app y entraría sin pasar por AutenticacionView
+        //    si no hicieramos la validación acá.
+        //    `PerfilRolRow` está definido en AutenticacionView.swift.
+        print("[AutRol] ━━━━━ VALIDACIÓN SESIÓN PERSISTIDA ━━━━━")
+        print("[AutRol] 🔎 Flujo: re-apertura de app (ContentView)")
+        print("[AutRol] 🔎 user.id = \(session.user.id.uuidString)")
+        print("[AutRol] 🔎 email   = \(session.user.email ?? "<sin email>")")
+
+        let perfilRol: PerfilRolRow? = try? await SupabaseManager.shared.client
             .from("perfiles")
-            .select()
+            .select("rol")
             .eq("id", value: session.user.id)
             .single()
-            .execute()) != nil
+            .execute()
+            .value
 
-        if perfilExiste {
+        if let perfilRol {
+            print("[AutRol] 🔐 Rol en BD: \"\(perfilRol.rol)\"")
+        } else {
+            print("[AutRol] ℹ️ No se encontró fila en perfiles → perfil aún no creado (ir a CompletarDatos).")
+        }
+
+        if let perfilRol, perfilRol.rol != "paciente" {
+            print("[AutRol] ❌ RESULTADO: sesión persistida con rol AJENO (\(perfilRol.rol)) — cerrando sesión.")
+            print("[AutRol] 🚨 Paso 1/2: signOut()…")
+            try? await SupabaseManager.shared.client.auth.signOut()
+            print("[AutRol] 🚨 Paso 2/2: limpiando HealthKit + flags de onboarding.")
+            HealthKitManager.shared.limpiarEstado()
+            isAuthenticated = false
+            datosCompletados = false
+            permisosCompletados = false
+            tutorialCompletado = false
+            print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            return
+        }
+
+        print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        if perfilRol != nil {
             print("[ContentView] ✅ Perfil encontrado. Usuario recurrente.")
             datosCompletados = true
             permisosCompletados = true
@@ -124,7 +157,7 @@ struct ContentView: View {
             datosCompletados = false
         }
 
-        // 4. Autenticado en ambos casos
+        // 4. Autenticado en ambos casos válidos (paciente o nuevo)
         isAuthenticated = true
     }
 }

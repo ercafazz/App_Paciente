@@ -817,6 +817,13 @@ final class HealthKitManager: @unchecked Sendable {
     /// Key para timestamp del último envío exitoso.
     private static let lastSendKey = "tueri.lastSendTimestamp"
 
+    /// Key para `finIntervalo` del último lote consolidado.
+    /// Se usa como cota inferior al cerrar el siguiente lote para evitar
+    /// que una muestra tardía de HealthKit (startDate en el pasado) haga
+    /// que `inicioIntervalo` quede por debajo del `finIntervalo` previo
+    /// y dos lotes consecutivos se solapen visualmente en la gráfica.
+    private static let ultimoFinLoteKey = "tueri.ultimoFinLote"
+
     // MARK: Propiedades privadas
 
     private let healthStore = HKHealthStore()
@@ -962,6 +969,7 @@ final class HealthKitManager: @unchecked Sendable {
         idPaciente = nil
         AnchorStore.clear(types: Set<HKSampleType>(todosLosTipos))
         UserDefaults.standard.removeObject(forKey: Self.lastSendKey)
+        UserDefaults.standard.removeObject(forKey: Self.ultimoFinLoteKey)
         AcumuladorFCStore.limpiar()
         // Los tokens de Supabase los limpia el SDK en `auth.signOut()`.
         // No tocamos nada aquí para no competir con el SDK.
@@ -1180,7 +1188,21 @@ final class HealthKitManager: @unchecked Sendable {
 
         var huboLoteFCNuevo = false
         if batchingVencido, let acc = AcumuladorFCStore.cargar(), acc.conteo > 0 {
-            let lote = acc.aLote(idPaciente: idPaciente)
+            // Clamp anti-solape: si HK entregó una muestra tardía cuyo
+            // startDate cae dentro del lote anterior, la fusión marcó
+            // `inicioIntervalo` por debajo del `finIntervalo` previo. Aquí
+            // recortamos ese borde sin tocar las muestras (promedio/min/max
+            // se preservan). +1 ms garantiza lotes estrictamente disjuntos.
+            var accAjustado = acc
+            let ultimoFin = UserDefaults.standard.object(
+                forKey: Self.ultimoFinLoteKey
+            ) as? Date ?? .distantPast
+            if accAjustado.inicioIntervalo < ultimoFin {
+                let recorteMs = ultimoFin.timeIntervalSince(accAjustado.inicioIntervalo) * 1000
+                print("[HKM] ✂️ Clamp de inicio_intervalo — recortados \(String(format: "%.0f", recorteMs)) ms para evitar solape con lote anterior.")
+                accAjustado.inicioIntervalo = ultimoFin.addingTimeInterval(0.001)
+            }
+            let lote = accAjustado.aLote(idPaciente: idPaciente)
 
             // 1️⃣ PERSISTIR — escribir el lote en disco (durable, sub-ms)
             BufferLocal.guardar(lote)
@@ -1188,8 +1210,9 @@ final class HealthKitManager: @unchecked Sendable {
             // 2️⃣ LIMPIAR — el acumulador ya fue promovido a lote
             AcumuladorFCStore.limpiar()
 
-            // 3️⃣ AVANZAR ventana de batching
+            // 3️⃣ AVANZAR ventana de batching y guardar fin para clamp futuro
             UserDefaults.standard.set(Date(), forKey: Self.lastSendKey)
+            UserDefaults.standard.set(lote.finIntervalo, forKey: Self.ultimoFinLoteKey)
 
             huboLoteFCNuevo = true
             print("[HKM] 💾 LOTE FC consolidado — \(acc.conteo) lecturas en la ventana — \(ts())")

@@ -531,6 +531,31 @@ struct AutenticacionView: View {
             // duplicamos tokens en UserDefaults (evita colisión con el SDK
             // cuando ambos intentan refrescar → revocación por refresh reuse).
 
+            // 1.5 Validar el rol del perfil ANTES de prender HealthKit
+            //     y `isAuthenticated`. Aunque el caso típico de cross-app
+            //     es Google (un correo gmail compartido), email/password
+            //     también puede colisionar si un médico tuviera registrada
+            //     su cuenta con email/password en App_Medico — el mismo
+            //     correo lo dejaría entrar acá sin esta validación.
+            print("[AutRol] ━━━━━━━ VALIDACIÓN EMAIL/PASSWORD ━━━━━━━")
+            print("[AutRol] 🔎 Flujo: Email + Password")
+            print("[AutRol] 🔎 user.id = \(session.user.id.uuidString)")
+            print("[AutRol] 🔎 email   = \(session.user.email ?? "<sin email>")")
+            let validacionEP = await validarRolPaciente(idUsuario: session.user.id)
+            switch validacionEP {
+            case .rolInvalido(let rolAjeno):
+                print("[AutRol] ❌ RESULTADO: Login email/password RECHAZADO — rol ajeno: \(rolAjeno)")
+                print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                await rechazarSesionPorRolAjeno()
+                return
+            case .esPaciente:
+                print("[AutRol] ✅ RESULTADO: rol paciente válido — continuando flujo email/password.")
+                print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            case .noExisteAun:
+                print("[AutRol] 🆕 RESULTADO: perfil no existe — usuario nuevo (raro en email/password con signIn).")
+                print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            }
+
             // 2. Conectar la tubería de HealthKit con el ID del paciente
             HealthKitManager.shared.idPaciente = session.user.id
 
@@ -671,6 +696,32 @@ struct AutenticacionView: View {
             // El SDK persiste la sesión en Keychain automáticamente — no
             // duplicamos tokens (ver AutenticacionView.iniciarSesion).
 
+            // 6.5 Validar el rol del perfil ANTES de prender HealthKit /
+            //     `isAuthenticated`. Si el correo ya pertenece a un médico
+            //     (registrado en App_Medico), cerramos la sesión transitoria
+            //     y mostramos un error en español. Esto evita que un médico
+            //     entre por accidente a la app de paciente y vea/escriba
+            //     datos en el perfil ajeno.
+            print("[AutRol] ━━━━━━━━━━ VALIDACIÓN GOOGLE ━━━━━━━━━━")
+            print("[AutRol] 🔎 Flujo: Google Sign-In")
+            print("[AutRol] 🔎 user.id = \(session.user.id.uuidString)")
+            print("[AutRol] 🔎 email   = \(session.user.email ?? "<sin email>")")
+            print("[AutRol] 🔎 provider (appMetadata) = \(session.user.appMetadata["provider"]?.stringValue ?? "<nil>")")
+            let validacionGoogle = await validarRolPaciente(idUsuario: session.user.id)
+            switch validacionGoogle {
+            case .rolInvalido(let rolAjeno):
+                print("[AutRol] ❌ RESULTADO: Login Google RECHAZADO — rol ajeno: \(rolAjeno)")
+                print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                await rechazarSesionPorRolAjeno()
+                return
+            case .esPaciente:
+                print("[AutRol] ✅ RESULTADO: rol paciente válido — continuando flujo Google.")
+                print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            case .noExisteAun:
+                print("[AutRol] 🆕 RESULTADO: perfil no existe — usuario nuevo, irá a CompletarDatosView.")
+                print("[AutRol] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            }
+
             // 7. Conectar la tubería de HealthKit con el ID del paciente
             HealthKitManager.shared.idPaciente = session.user.id
 
@@ -766,6 +817,74 @@ struct AutenticacionView: View {
         return mapearErrorAuth(error)
     }
 
+    // MARK: - Validación de rol (anti cross-app login)
+
+    /// Resultado de consultar el rol del perfil tras autenticar.
+    /// Se usa para impedir que un usuario con rol ajeno (típicamente
+    /// `medico`, registrado en App_Medico con el mismo correo) entre
+    /// a la app de paciente y termine viendo datos que no le corresponden.
+    private enum ResultadoValidacionRol {
+        case noExisteAun           // Usuario nuevo → debe pasar por CompletarDatosView
+        case esPaciente            // OK, continuar flujo normal
+        case rolInvalido(String)   // Rechazar y cerrar sesión
+    }
+
+    /// Consulta `perfiles.rol` para el usuario recién autenticado.
+    /// Usa el cliente principal — la sesión recién creada por
+    /// `signInWithIdToken` / `signIn` ya lleva el JWT correcto, así que
+    /// las RLS funcionan. Si la fila no existe (o `.single()` lanza),
+    /// se interpreta como usuario nuevo (no es un error).
+    private func validarRolPaciente(idUsuario: UUID) async -> ResultadoValidacionRol {
+        print("[AutRol] 🔐 Validando rol para user.id=\(idUsuario.uuidString)")
+        do {
+            let perfil: PerfilRolRow = try await SupabaseManager.shared.client
+                .from("perfiles")
+                .select("rol")
+                .eq("id", value: idUsuario)
+                .single()
+                .execute()
+                .value
+
+            print("[AutRol] 🔐 Rol en BD: \"\(perfil.rol)\"")
+            if perfil.rol == "paciente" {
+                print("[AutRol] ✅ Rol válido — continuar flujo normal.")
+                return .esPaciente
+            } else {
+                print("[AutRol] 🚫 Rol AJENO detectado (\(perfil.rol)) — se rechazará la sesión.")
+                return .rolInvalido(perfil.rol)
+            }
+        } catch {
+            // `.single()` lanza cuando no hay fila → tratamos como "no existe aún".
+            // Esto es el caso normal de un primer login que pasará por CompletarDatosView.
+            print("[AutRol] ℹ️ No se encontró fila en perfiles (o error leyendo): \(error.localizedDescription) → tratando como 'noExisteAun' (usuario nuevo).")
+            return .noExisteAun
+        }
+    }
+
+    /// Limpia la sesión transitoria que quedó establecida por el SDK
+    /// y muestra el mensaje de rechazo en la UI. Se invoca cuando el
+    /// rol del perfil existente NO es 'paciente'.
+    private func rechazarSesionPorRolAjeno() async {
+        print("[AutRol] 🚨 Ejecutando rechazo de sesión por rol ajeno.")
+        print("[AutRol] 🚨 Paso 1/3: signOut() en el cliente Supabase principal…")
+        do {
+            try await SupabaseManager.shared.client.auth.signOut()
+            print("[AutRol] 🚨 Paso 1/3 ✅ signOut() completado (sesión local borrada + refresh token invalidado en servidor).")
+        } catch {
+            print("[AutRol] 🚨 Paso 1/3 ⚠️ signOut() lanzó error: \(error.localizedDescription) — la sesión local debería haberse borrado de todas formas.")
+        }
+
+        print("[AutRol] 🚨 Paso 2/3: limpiando HealthKitManager.idPaciente.")
+        HealthKitManager.shared.idPaciente = nil
+
+        print("[AutRol] 🚨 Paso 3/3: mostrando alerta al usuario.")
+        await MainActor.run {
+            mensajeError = "Este correo ya está registrado como personal de salud en Tuēri. Para usar la app de paciente, usa un correo diferente."
+            mostrarAlertaError = true
+        }
+        print("[AutRol] 🚨 Rechazo completo. isAuthenticated permanece en: \(isAuthenticated).")
+    }
+
     // MARK: - Mapeo de errores legible
 
     /// Traduce errores de Supabase Auth a mensajes amigables en español.
@@ -802,6 +921,15 @@ struct AutenticacionView: View {
         // Fallback genérico
         return "Ocurrió un error inesperado: \(error.localizedDescription)"
     }
+}
+
+// MARK: - Modelo Codable para validación de rol
+
+/// Subset mínimo de la fila `perfiles` usado únicamente para validar
+/// el rol del usuario tras autenticar y bloquear accesos cruzados
+/// entre App_Paciente y App_Medico.
+struct PerfilRolRow: Codable {
+    let rol: String
 }
 
 // MARK: - Preview
