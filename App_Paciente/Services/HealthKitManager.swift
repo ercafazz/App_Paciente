@@ -305,12 +305,40 @@ fileprivate struct AcumuladorFC: Codable, Sendable {
     var inicioIntervalo: Date
     var finIntervalo: Date
 
+    /// Momento exacto (`HKQuantitySample.startDate`) de la muestra que estableció
+    /// el `minimo` actual. Se actualiza cada vez que entra una muestra con valor
+    /// estrictamente menor. Optional → nil para acumuladores legacy en disco.
+    var momentoMinimo: Date?
+
+    /// Momento exacto (`HKQuantitySample.startDate`) de la muestra que estableció
+    /// el `maximo` actual. Se actualiza cada vez que entra una muestra con valor
+    /// estrictamente mayor. Optional → nil para acumuladores legacy en disco.
+    var momentoMaximo: Date?
+
     /// Convierte el acumulador a un lote listo para enviar.
     /// El promedio se redondea a 2 decimales (misma convención que antes).
     func aLote(idPaciente: UUID) -> LoteSignosVitales {
         let promedio = conteo > 0
             ? ((suma / Double(conteo)) * 100).rounded() / 100
             : nil
+
+        // Duración del intervalo en HORAS (decimal). Ej.: 15 min = 0.25 h.
+        // Redondeo a 4 decimales para que la columna NUMERIC no acumule
+        // ruido de coma flotante (10⁻⁴ h ≈ 0.36 s — más que suficiente).
+        let segundos = finIntervalo.timeIntervalSince(inicioIntervalo)
+        let duracionHoras: Double? = (segundos > 0)
+            ? (segundos / 3600.0 * 10000).rounded() / 10000
+            : nil
+
+        // Densidad = lecturas / horas. Defensivo contra duración 0 o negativa
+        // (no debería ocurrir, pero blindamos para no escribir NaN/Inf en BD).
+        let densidad: Double?
+        if let h = duracionHoras, h > 0, conteo > 0 {
+            densidad = ((Double(conteo) / h) * 100).rounded() / 100
+        } else {
+            densidad = nil
+        }
+
         return LoteSignosVitales(
             id: idLote,
             idPaciente: idPaciente,
@@ -320,6 +348,14 @@ fileprivate struct AcumuladorFC: Codable, Sendable {
             fcMaxima: conteo > 0 ? maximo : nil,
             fcMinima: conteo > 0 ? minimo : nil,
             fcLecturas: conteo > 0 ? conteo : nil,
+            fcMinimaTimestamp: conteo > 0 ? momentoMinimo : nil,
+            fcMaximaTimestamp: conteo > 0 ? momentoMaximo : nil,
+            duracion: duracionHoras,
+            densidadLecturas: densidad,
+            // El cliente SIEMPRE escribe "pendiente". La Edge Function
+            // (disparada por webhook tras INSERT) lo reemplaza por
+            // "valido" o "invalido" según el modelo de calidad.
+            estadoCalidad: "pendiente",
             creadoEn: nil
         )
     }
@@ -369,14 +405,24 @@ fileprivate enum AcumuladorFCStore {
             minimo: .infinity,
             maximo: -.infinity,
             inicioIntervalo: .distantFuture,
-            finIntervalo: .distantPast
+            finIntervalo: .distantPast,
+            momentoMinimo: nil,
+            momentoMaximo: nil
         )
 
         for m in muestras {
             acc.conteo += 1
             acc.suma += m.valor
-            if m.valor < acc.minimo { acc.minimo = m.valor }
-            if m.valor > acc.maximo { acc.maximo = m.valor }
+            // Estricta menor/mayor: en empates conservamos la PRIMERA muestra
+            // que estableció el extremo (timestamp más temprano).
+            if m.valor < acc.minimo {
+                acc.minimo = m.valor
+                acc.momentoMinimo = m.inicio
+            }
+            if m.valor > acc.maximo {
+                acc.maximo = m.valor
+                acc.momentoMaximo = m.inicio
+            }
             if m.inicio < acc.inicioIntervalo { acc.inicioIntervalo = m.inicio }
             if m.fin    > acc.finIntervalo    { acc.finIntervalo    = m.fin }
         }
@@ -708,6 +754,20 @@ private enum EnvioLigero {
         if let v = lote.fcMaxima     { dict["fc_maxima"]     = v }
         if let v = lote.fcMinima     { dict["fc_minima"]     = v }
         if let v = lote.fcLecturas   { dict["fc_lecturas"]   = v }
+
+        // Momento exacto de la lectura mínima/máxima (HKQuantitySample.startDate).
+        // Nullable en BD: si por alguna razón no hubo muestras válidas, omitimos.
+        if let t = lote.fcMinimaTimestamp { dict["fc_minima_timestamp"] = FechaISO.string(from: t) }
+        if let t = lote.fcMaximaTimestamp { dict["fc_maxima_timestamp"] = FechaISO.string(from: t) }
+
+        // Calidad del lote — para el modelo de alarmas inteligentes.
+        // - duracion: horas decimales del intervalo.
+        // - densidad_lecturas: lecturas/hora (filtra lotes con muestreo pobre).
+        // - estado_calidad: SIEMPRE "pendiente" desde el cliente; la Edge
+        //   Function lo recalcula a "valido"/"invalido" tras el INSERT.
+        if let v = lote.duracion         { dict["duracion"]          = v }
+        if let v = lote.densidadLecturas { dict["densidad_lecturas"] = v }
+        if let v = lote.estadoCalidad    { dict["estado_calidad"]    = v }
 
         guard let body = try? JSONSerialization.data(withJSONObject: dict) else {
             print("[EnvioLigero] ❌ Error codificando lote")

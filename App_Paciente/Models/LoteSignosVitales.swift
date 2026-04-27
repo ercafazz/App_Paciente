@@ -32,6 +32,32 @@ struct LoteSignosVitales: Codable, Identifiable, Sendable {
     var fcMinima: Double?
     var fcLecturas: Int?
 
+    /// Momento exacto (`HKQuantitySample.startDate`) de la muestra que produjo
+    /// `fcMinima` dentro del intervalo del lote. Nullable por compatibilidad con
+    /// lotes legacy guardados antes de esta columna.
+    var fcMinimaTimestamp: Date?
+
+    /// Momento exacto (`HKQuantitySample.startDate`) de la muestra que produjo
+    /// `fcMaxima` dentro del intervalo del lote. Nullable por compatibilidad con
+    /// lotes legacy guardados antes de esta columna.
+    var fcMaximaTimestamp: Date?
+
+    // MARK: - Calidad del lote (alarmas inteligentes)
+
+    /// Duración del intervalo del lote en **horas** (decimal).
+    /// Ej.: lote de 15 min → `0.25`. Calculado como `(fin - inicio) / 3600`.
+    var duracion: Double?
+
+    /// Densidad de muestreo en **lecturas por hora** dentro del intervalo.
+    /// Calculado como `fcLecturas / duracion`. nil si no hay lecturas o
+    /// duración cero (edge case defensivo).
+    var densidadLecturas: Double?
+
+    /// Estado de calidad del lote. El cliente siempre escribe `"pendiente"`;
+    /// una Edge Function (disparada por webhook tras el INSERT) lo actualiza
+    /// a `"valido"` o `"invalido"` según el modelo de calidad.
+    var estadoCalidad: String?
+
     // MARK: - Metadatos
 
     var creadoEn: Date?
@@ -53,6 +79,13 @@ struct LoteSignosVitales: Codable, Identifiable, Sendable {
         case fcMaxima = "fc_maxima"
         case fcMinima = "fc_minima"
         case fcLecturas = "fc_lecturas"
+
+        case fcMinimaTimestamp = "fc_minima_timestamp"
+        case fcMaximaTimestamp = "fc_maxima_timestamp"
+
+        case duracion = "duracion"
+        case densidadLecturas = "densidad_lecturas"
+        case estadoCalidad = "estado_calidad"
 
         case creadoEn = "creado_en"
     }
