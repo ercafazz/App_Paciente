@@ -76,7 +76,10 @@ struct CompletarDatosView: View {
 
     @State private var tipoCedula: TipoCedula = .venezolano
     @State private var cedula = ""
-    @State private var telefono = ""
+    /// Pre-cargado con "+58 " (código de Venezuela, mercado principal hoy).
+    /// El "+" es obligatorio en E.164; el espacio es solo cosmético — se
+    /// elimina al persistir vía `TelefonoValidator.toCanonicalE164`.
+    @State private var telefono = "+58 "
     @State private var dia = ""
     @State private var mes = ""
     @State private var anio = ""
@@ -248,7 +251,7 @@ struct CompletarDatosView: View {
         VStack(alignment: .leading, spacing: 8) {
             etiqueta("TELÉFONO DE CONTACTO")
 
-            TextField("04121234567", text: $telefono)
+            TextField("+58 412 1234567", text: $telefono)
                 .font(.system(size: 15))
                 .foregroundStyle(grisTitulo)
                 .padding(.horizontal, 16)
@@ -258,7 +261,25 @@ struct CompletarDatosView: View {
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
                 .autocorrectionDisabled()
+
+            // Error inline — solo se muestra si el usuario tocó el campo
+            // (ya escribió algo distinto al prefijo por defecto) y aún no
+            // cumple E.164. Evita mostrar rojo apenas se abre la pantalla.
+            if mostrarErrorTelefono {
+                Text("Formato inválido. Usa el código de país. Ejemplo: +58 412 1234567")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 4)
+            }
         }
+    }
+
+    /// Solo se muestra el mensaje rojo si el usuario ya editó el campo
+    /// (no está exactamente en "+58 ") y el valor actual no es E.164.
+    private var mostrarErrorTelefono: Bool {
+        let trimmed = telefono.trimmingCharacters(in: .whitespaces)
+        guard trimmed != "+58" && !trimmed.isEmpty else { return false }
+        return !TelefonoValidator.isE164Valid(telefono)
     }
 
     // ── Fecha de Nacimiento (Día / Mes / Año) ──
@@ -411,7 +432,10 @@ struct CompletarDatosView: View {
 
     private var formularioValido: Bool {
         let cedulaValida = !cedula.trimmingCharacters(in: .whitespaces).isEmpty
-        let telefonoValido = !telefono.trimmingCharacters(in: .whitespaces).isEmpty
+        // El teléfono se considera válido SOLO si cumple E.164 estricto —
+        // misma regla que App_Medico, para que el botón "Llamar" del médico
+        // funcione siempre con `tel:<telefono>`.
+        let telefonoValido = TelefonoValidator.isE164Valid(telefono)
         let fechaValida = !dia.isEmpty && !mes.isEmpty && !anio.isEmpty && anio.count == 4
         let sexoValido = sexoSeleccionado != nil
 
@@ -542,13 +566,23 @@ struct CompletarDatosView: View {
             let cedulaNumerica = cedula.trimmingCharacters(in: .whitespaces)
             let cedulaConPrefijo = "\(tipoCedula.rawValue)-\(cedulaNumerica)"
 
+            // Persistir SIEMPRE la versión canónica E.164 (sin espacios,
+            // sin guiones, sin paréntesis). `formularioValido` ya garantiza
+            // que `toCanonicalE164` no será nil, pero blindamos con guard
+            // para que el INSERT nunca lleve un teléfono malformado.
+            guard let telefonoCanonico = TelefonoValidator.toCanonicalE164(telefono) else {
+                mensajeError = "Número de teléfono inválido. Usa el formato internacional, ej. +58 412 1234567."
+                mostrarAlertaError = true
+                return
+            }
+
             let perfilInsert = PerfilInsert(
                 id: userId,
                 rol: "paciente",
                 nombreCompleto: nombre,
                 correoElectronico: email,
                 cedula: cedulaConPrefijo,
-                telefono: telefono.trimmingCharacters(in: .whitespaces),
+                telefono: telefonoCanonico,
                 fechaNacimiento: fechaFormateada,
                 sexoBiologico: sexoSeleccionado?.rawValue ?? ""
             )

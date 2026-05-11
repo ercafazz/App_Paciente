@@ -202,8 +202,8 @@ struct AjustesView: View {
                                     .font(.system(size: 17, weight: .semibold))
                                     .foregroundStyle(tealTueri)
                             }
-                            .disabled(!hayCambios)
-                            .opacity(hayCambios ? 1.0 : 0.4)
+                            .disabled(!puedeGuardar)
+                            .opacity(puedeGuardar ? 1.0 : 0.4)
                         }
                     } else {
                         Button {
@@ -262,7 +262,7 @@ struct AjustesView: View {
                     perfilRowBloqueado(etiqueta: "Cedula", valor: displayCedula)
                     Divider().background(grisBorde).padding(.horizontal, 18)
 
-                    perfilRowEditable(etiqueta: "Telefono", texto: $editTelefono, teclado: .phonePad)
+                    perfilRowTelefono
                     Divider().background(grisBorde).padding(.horizontal, 18)
 
                     // Correo bloqueado: el cambio de email requiere un
@@ -320,6 +320,55 @@ struct AjustesView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 13)
+    }
+
+    // MARK: - Fila editable Teléfono (con validación E.164)
+
+    /// Fila especializada para teléfono. Comparte estilo con `perfilRowEditable`
+    /// pero añade un mensaje de error inline en rojo cuando el valor no
+    /// cumple E.164. El botón "Guardar" del padre solo se habilita si
+    /// `telefonoEditValido` es true (vía `puedeGuardar`).
+    private var perfilRowTelefono: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Telefono")
+                    .font(.system(size: 15))
+                    .foregroundStyle(grisTitulo)
+                    .frame(width: 80, alignment: .leading)
+
+                Spacer()
+
+                TextField("Telefono", text: $editTelefono)
+                    .font(.system(size: 15))
+                    .foregroundStyle(grisTitulo)
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
+                    .autocorrectionDisabled()
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 13)
+
+            if mostrarErrorTelefonoEdicion {
+                HStack {
+                    Spacer()
+                    Text("Formato inválido. Ejemplo: +58 412 1234567")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.red)
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 8)
+            }
+        }
+    }
+
+    /// Mostramos error solo si el campo no está vacío y no cumple E.164.
+    /// (Si está vacío durante la edición, el botón Guardar igual estará
+    /// deshabilitado, pero no necesitamos llenar la UI de rojo.)
+    private var mostrarErrorTelefonoEdicion: Bool {
+        let trimmed = editTelefono.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return false }
+        return !TelefonoValidator.isE164Valid(editTelefono)
     }
 
     // MARK: - Fila bloqueada (solo lectura, estilo atenuado)
@@ -519,16 +568,36 @@ struct AjustesView: View {
     // MARK: - Deteccion de cambios
 
     private var hayCambios: Bool {
-        editNombre.trimmingCharacters(in: .whitespaces) != originalNombre ||
-        editTelefono.trimmingCharacters(in: .whitespaces) != originalTelefono
+        cambioNombre || cambioTelefono
     }
 
     private var cambioNombre: Bool {
         editNombre.trimmingCharacters(in: .whitespaces) != originalNombre
     }
 
+    /// Compara teléfonos en su **forma canónica** cuando es posible:
+    /// "04121234567" vs "+58 412 1234567" deberían tratarse iguales si
+    /// ambos resuelven al mismo E.164. Si alguno no es canonicalizable,
+    /// caemos a comparación literal (trimmed).
     private var cambioTelefono: Bool {
-        editTelefono.trimmingCharacters(in: .whitespaces) != originalTelefono
+        let canonNuevo = TelefonoValidator.toCanonicalE164(editTelefono)
+            ?? editTelefono.trimmingCharacters(in: .whitespaces)
+        let canonOriginal = TelefonoValidator.toCanonicalE164(originalTelefono)
+            ?? originalTelefono.trimmingCharacters(in: .whitespaces)
+        return canonNuevo != canonOriginal
+    }
+
+    /// Botón "Guardar" habilitado cuando:
+    ///  · Hay algún cambio real, Y
+    ///  · Si el teléfono cambió, debe ser E.164 válido (si no cambió,
+    ///    no exigimos nada — un usuario legacy puede editar SOLO el
+    ///    nombre sin verse forzado a "arreglar" un teléfono viejo).
+    private var puedeGuardar: Bool {
+        guard hayCambios else { return false }
+        if cambioTelefono {
+            return TelefonoValidator.isE164Valid(editTelefono)
+        }
+        return true
     }
 
     // MARK: - Iniciar / Cancelar edicion
@@ -578,7 +647,15 @@ struct AjustesView: View {
                     body["nombre_completo"] = editNombre.trimmingCharacters(in: .whitespaces)
                 }
                 if cambioTelefono {
-                    body["telefono"] = editTelefono.trimmingCharacters(in: .whitespaces)
+                    // `puedeGuardar` ya garantiza que es válido — el guard
+                    // es solo defensa en profundidad. Persistimos SIEMPRE
+                    // la forma canónica E.164 (sin espacios/guiones).
+                    guard let canonico = TelefonoValidator.toCanonicalE164(editTelefono) else {
+                        huboError = true
+                        mensajes.append("Número de teléfono inválido. Ejemplo: +58 412 1234567.")
+                        return
+                    }
+                    body["telefono"] = canonico
                 }
 
                 var request = URLRequest(url: url)
@@ -598,8 +675,13 @@ struct AjustesView: View {
                     if cambioNombre {
                         originalNombre = editNombre.trimmingCharacters(in: .whitespaces)
                     }
-                    if cambioTelefono {
-                        originalTelefono = editTelefono.trimmingCharacters(in: .whitespaces)
+                    if cambioTelefono,
+                       let canonico = TelefonoValidator.toCanonicalE164(editTelefono) {
+                        // Sincronizamos UI y baseline con la forma canónica:
+                        // el usuario ve inmediatamente cómo quedó guardado
+                        // y futuros `cambioTelefono` comparan contra E.164.
+                        originalTelefono = canonico
+                        editTelefono = canonico
                     }
                     mensajes.append("Perfil actualizado correctamente.")
                     print("[AjustesView] Perfil actualizado via Edge Function.")
