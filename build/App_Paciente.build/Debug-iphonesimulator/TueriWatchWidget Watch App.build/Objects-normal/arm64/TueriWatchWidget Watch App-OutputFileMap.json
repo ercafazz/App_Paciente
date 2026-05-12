@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchWidget Watch App-primary.dia",
+    "emit-module-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchWidget Watch App-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchWidget Watch App-primary-emit-module.dia",
+    "pch" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchWidget Watch App-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchWidget Watch App-primary.swiftdeps"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/TueriWatch Watch App/TueriWatchApp.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidget Watch App.build/Objects-normal/arm64/TueriWatchApp~partial.swiftmodule"
+  }
+}

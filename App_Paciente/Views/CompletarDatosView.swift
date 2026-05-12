@@ -76,10 +76,13 @@ struct CompletarDatosView: View {
 
     @State private var tipoCedula: TipoCedula = .venezolano
     @State private var cedula = ""
-    /// Pre-cargado con "+58 " (código de Venezuela, mercado principal hoy).
-    /// El "+" es obligatorio en E.164; el espacio es solo cosmético — se
-    /// elimina al persistir vía `TelefonoValidator.toCanonicalE164`.
-    @State private var telefono = "+58 "
+    /// Teléfono manejado por `PhoneInputView`:
+    /// - Default visual: Venezuela (+58) + input numérico vacío.
+    /// - El componente compone el E.164 (`dial + subscriber`) y nos da
+    ///   el flag de validez. Aquí solo guardamos el resultado para usarlo
+    ///   en `formularioValido` y en `guardarDatos()`.
+    @State private var telefonoE164 = ""
+    @State private var telefonoValido = false
     @State private var dia = ""
     @State private var mes = ""
     @State private var anio = ""
@@ -251,35 +254,19 @@ struct CompletarDatosView: View {
         VStack(alignment: .leading, spacing: 8) {
             etiqueta("TELÉFONO DE CONTACTO")
 
-            TextField("+58 412 1234567", text: $telefono)
-                .font(.system(size: 15))
-                .foregroundStyle(grisTitulo)
-                .padding(.horizontal, 16)
-                .frame(height: 48)
-                .background(grisFondoCampo)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .keyboardType(.phonePad)
-                .textContentType(.telephoneNumber)
-                .autocorrectionDisabled()
-
-            // Error inline — solo se muestra si el usuario tocó el campo
-            // (ya escribió algo distinto al prefijo por defecto) y aún no
-            // cumple E.164. Evita mostrar rojo apenas se abre la pantalla.
-            if mostrarErrorTelefono {
-                Text("Formato inválido. Usa el código de país. Ejemplo: +58 412 1234567")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red)
-                    .padding(.horizontal, 4)
+            // PhoneInputView: selector de país (sheet con búsqueda) +
+            // TextField numérico puro. Default visual: 🇻🇪 +58.
+            // Solo mostramos el hint rojo cuando el usuario ya empezó a
+            // escribir dígitos y aún no cumple E.164 — evita asustarlo
+            // al abrir la pantalla.
+            PhoneInputView(
+                showError: !telefonoE164.isEmpty && !telefonoValido,
+                backgroundColor: grisFondoCampo
+            ) { e164, valido in
+                telefonoE164 = e164
+                telefonoValido = valido
             }
         }
-    }
-
-    /// Solo se muestra el mensaje rojo si el usuario ya editó el campo
-    /// (no está exactamente en "+58 ") y el valor actual no es E.164.
-    private var mostrarErrorTelefono: Bool {
-        let trimmed = telefono.trimmingCharacters(in: .whitespaces)
-        guard trimmed != "+58" && !trimmed.isEmpty else { return false }
-        return !TelefonoValidator.isE164Valid(telefono)
     }
 
     // ── Fecha de Nacimiento (Día / Mes / Año) ──
@@ -432,10 +419,10 @@ struct CompletarDatosView: View {
 
     private var formularioValido: Bool {
         let cedulaValida = !cedula.trimmingCharacters(in: .whitespaces).isEmpty
-        // El teléfono se considera válido SOLO si cumple E.164 estricto —
-        // misma regla que App_Medico, para que el botón "Llamar" del médico
-        // funcione siempre con `tel:<telefono>`.
-        let telefonoValido = TelefonoValidator.isE164Valid(telefono)
+        // `telefonoValido` viene directo del PhoneInputView, que aplica
+        // el regex E.164 estricto sobre `dial + subscriber`. Impide
+        // avanzar con un número incompleto — el botón "Llamar" del médico
+        // (`tel:<telefono>` en RN) fallaría con cualquier cosa no-canónica.
         let fechaValida = !dia.isEmpty && !mes.isEmpty && !anio.isEmpty && anio.count == 4
         let sexoValido = sexoSeleccionado != nil
 
@@ -568,10 +555,10 @@ struct CompletarDatosView: View {
 
             // Persistir SIEMPRE la versión canónica E.164 (sin espacios,
             // sin guiones, sin paréntesis). `formularioValido` ya garantiza
-            // que `toCanonicalE164` no será nil, pero blindamos con guard
-            // para que el INSERT nunca lleve un teléfono malformado.
-            guard let telefonoCanonico = TelefonoValidator.toCanonicalE164(telefono) else {
-                mensajeError = "Número de teléfono inválido. Usa el formato internacional, ej. +58 412 1234567."
+            // que `telefonoE164` es válido, pero blindamos con guard para
+            // que el INSERT nunca lleve un teléfono malformado.
+            guard let telefonoCanonico = TelefonoValidator.toCanonicalE164(telefonoE164) else {
+                mensajeError = "Número de teléfono inválido. Selecciona el código de país y completa al menos 8 dígitos."
                 mostrarAlertaError = true
                 return
             }

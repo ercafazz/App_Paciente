@@ -38,7 +38,10 @@ struct AjustesView: View {
 
     // Campos editables (temporales mientras se edita)
     @State private var editNombre = ""
-    @State private var editTelefono = ""
+    /// E.164 actual del campo teléfono dentro del editor. Lo administra
+    /// `PhoneInputView` vía callback. Validez en `editTelefonoValido`.
+    @State private var editTelefonoE164 = ""
+    @State private var editTelefonoValido = false
 
     // Valores originales para detectar cambios
     @State private var originalNombre = ""
@@ -322,53 +325,35 @@ struct AjustesView: View {
         .padding(.vertical, 13)
     }
 
-    // MARK: - Fila editable Teléfono (con validación E.164)
+    // MARK: - Fila editable Teléfono (con PhoneInputView)
 
-    /// Fila especializada para teléfono. Comparte estilo con `perfilRowEditable`
-    /// pero añade un mensaje de error inline en rojo cuando el valor no
-    /// cumple E.164. El botón "Guardar" del padre solo se habilita si
-    /// `telefonoEditValido` es true (vía `puedeGuardar`).
+    /// Fila especializada para teléfono en modo edición. Rompemos el
+    /// layout horizontal del resto del editor porque `PhoneInputView`
+    /// integra selector de país + input numérico y necesita ancho
+    /// completo. En modo lectura el teléfono se muestra normalmente en
+    /// `datosPerfil` (fila compacta como los demás).
+    ///
+    /// El `.id(originalTelefono)` fuerza remount cuando carga un perfil
+    /// nuevo (refresh tras guardar): así `PhoneInputView` re-parsea el
+    /// E.164 actual y muestra el país/dígitos correctos.
     private var perfilRowTelefono: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Telefono")
-                    .font(.system(size: 15))
-                    .foregroundStyle(grisTitulo)
-                    .frame(width: 80, alignment: .leading)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Telefono")
+                .font(.system(size: 15))
+                .foregroundStyle(grisTitulo)
 
-                Spacer()
-
-                TextField("Telefono", text: $editTelefono)
-                    .font(.system(size: 15))
-                    .foregroundStyle(grisTitulo)
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.phonePad)
-                    .textContentType(.telephoneNumber)
-                    .autocorrectionDisabled()
+            PhoneInputView(
+                defaultE164: originalTelefono,
+                showError: !editTelefonoE164.isEmpty && !editTelefonoValido,
+                backgroundColor: Color.white
+            ) { e164, valido in
+                editTelefonoE164 = e164
+                editTelefonoValido = valido
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 13)
-
-            if mostrarErrorTelefonoEdicion {
-                HStack {
-                    Spacer()
-                    Text("Formato inválido. Ejemplo: +58 412 1234567")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.red)
-                }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 8)
-            }
+            .id(originalTelefono)
         }
-    }
-
-    /// Mostramos error solo si el campo no está vacío y no cumple E.164.
-    /// (Si está vacío durante la edición, el botón Guardar igual estará
-    /// deshabilitado, pero no necesitamos llenar la UI de rojo.)
-    private var mostrarErrorTelefonoEdicion: Bool {
-        let trimmed = editTelefono.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return false }
-        return !TelefonoValidator.isE164Valid(editTelefono)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 13)
     }
 
     // MARK: - Fila bloqueada (solo lectura, estilo atenuado)
@@ -575,13 +560,14 @@ struct AjustesView: View {
         editNombre.trimmingCharacters(in: .whitespaces) != originalNombre
     }
 
-    /// Compara teléfonos en su **forma canónica** cuando es posible:
-    /// "04121234567" vs "+58 412 1234567" deberían tratarse iguales si
-    /// ambos resuelven al mismo E.164. Si alguno no es canonicalizable,
-    /// caemos a comparación literal (trimmed).
+    /// Compara teléfonos en su **forma canónica** cuando es posible.
+    /// `editTelefonoE164` ya viene compuesto por PhoneInputView (dial+dígitos);
+    /// si aún no es válido, igual lo comparamos como string contra el
+    /// original. `originalTelefono` puede ser legacy no-E.164: lo
+    /// canonicalizamos si se puede, sino comparamos crudo.
     private var cambioTelefono: Bool {
-        let canonNuevo = TelefonoValidator.toCanonicalE164(editTelefono)
-            ?? editTelefono.trimmingCharacters(in: .whitespaces)
+        let canonNuevo = TelefonoValidator.toCanonicalE164(editTelefonoE164)
+            ?? editTelefonoE164
         let canonOriginal = TelefonoValidator.toCanonicalE164(originalTelefono)
             ?? originalTelefono.trimmingCharacters(in: .whitespaces)
         return canonNuevo != canonOriginal
@@ -595,7 +581,7 @@ struct AjustesView: View {
     private var puedeGuardar: Bool {
         guard hayCambios else { return false }
         if cambioTelefono {
-            return TelefonoValidator.isE164Valid(editTelefono)
+            return editTelefonoValido
         }
         return true
     }
@@ -609,9 +595,14 @@ struct AjustesView: View {
     }
 
     private func cancelarEdicion() {
-        // Restaurar valores originales
+        // Restaurar valores originales. Para el teléfono basta con
+        // resetear `editTelefonoE164` al original — al salir de edit
+        // mode el PhoneInputView se desmonta; cuando el usuario vuelva
+        // a entrar, montará fresh con `defaultE164: originalTelefono`
+        // gracias al `.id(originalTelefono)`.
         editNombre = originalNombre
-        editTelefono = originalTelefono
+        editTelefonoE164 = originalTelefono
+        editTelefonoValido = TelefonoValidator.isE164Valid(originalTelefono)
         withAnimation(.easeInOut(duration: 0.2)) {
             isEditing = false
         }
@@ -650,9 +641,9 @@ struct AjustesView: View {
                     // `puedeGuardar` ya garantiza que es válido — el guard
                     // es solo defensa en profundidad. Persistimos SIEMPRE
                     // la forma canónica E.164 (sin espacios/guiones).
-                    guard let canonico = TelefonoValidator.toCanonicalE164(editTelefono) else {
+                    guard let canonico = TelefonoValidator.toCanonicalE164(editTelefonoE164) else {
                         huboError = true
-                        mensajes.append("Número de teléfono inválido. Ejemplo: +58 412 1234567.")
+                        mensajes.append("Número de teléfono inválido. Selecciona el código de país y completa al menos 8 dígitos.")
                         return
                     }
                     body["telefono"] = canonico
@@ -676,12 +667,14 @@ struct AjustesView: View {
                         originalNombre = editNombre.trimmingCharacters(in: .whitespaces)
                     }
                     if cambioTelefono,
-                       let canonico = TelefonoValidator.toCanonicalE164(editTelefono) {
+                       let canonico = TelefonoValidator.toCanonicalE164(editTelefonoE164) {
                         // Sincronizamos UI y baseline con la forma canónica:
-                        // el usuario ve inmediatamente cómo quedó guardado
-                        // y futuros `cambioTelefono` comparan contra E.164.
+                        // futuros `cambioTelefono` comparan contra E.164.
+                        // Como `originalTelefono` cambia, el `.id(...)` del
+                        // PhoneInputView fuerza remount → re-parsea el
+                        // nuevo canónico y abre con país/dígitos correctos.
                         originalTelefono = canonico
-                        editTelefono = canonico
+                        editTelefonoE164 = canonico
                     }
                     mensajes.append("Perfil actualizado correctamente.")
                     print("[AjustesView] Perfil actualizado via Edge Function.")
@@ -771,8 +764,13 @@ struct AjustesView: View {
                 editNombre = perfil.nombreCompleto
                 originalNombre = perfil.nombreCompleto
 
-                editTelefono = perfil.telefono ?? ""
-                originalTelefono = perfil.telefono ?? ""
+                let tel = perfil.telefono ?? ""
+                editTelefonoE164 = tel
+                originalTelefono = tel
+                // Si el perfil ya está en E.164 (caso normal), el flag
+                // entra como true. Si es legacy no-canónico, false →
+                // el usuario debe re-ingresar al editar.
+                editTelefonoValido = TelefonoValidator.isE164Valid(tel)
 
                 // Campos bloqueados
                 displaySexo = sexoDisplay
@@ -901,8 +899,10 @@ struct AjustesView: View {
                 datosPerfil = datos
                 editNombre = perfil.nombreCompleto
                 originalNombre = perfil.nombreCompleto
-                editTelefono = perfil.telefono ?? ""
-                originalTelefono = perfil.telefono ?? ""
+                let tel = perfil.telefono ?? ""
+                editTelefonoE164 = tel
+                originalTelefono = tel
+                editTelefonoValido = TelefonoValidator.isE164Valid(tel)
                 displayCorreo = perfil.correoElectronico
             }
         } catch {

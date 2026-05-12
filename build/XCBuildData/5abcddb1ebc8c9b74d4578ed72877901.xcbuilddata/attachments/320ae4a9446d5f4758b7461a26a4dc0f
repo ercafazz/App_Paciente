@@ -1,0 +1,39 @@
+{
+  "" : {
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetExtension-primary.dia",
+    "emit-module-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetExtension-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetExtension-primary-emit-module.dia",
+    "pch" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetExtension-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetExtension-primary.swiftdeps"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/TueriWatchWidget/TueriWatchWidget.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidget~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/TueriWatchWidget/TueriWatchWidgetBundle.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/TueriWatchWidgetBundle~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/TueriWatchWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

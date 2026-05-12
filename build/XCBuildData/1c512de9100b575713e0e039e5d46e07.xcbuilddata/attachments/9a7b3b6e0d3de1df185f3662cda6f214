@@ -1,0 +1,169 @@
+{
+  "" : {
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_Paciente-primary.dia",
+    "emit-module-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_Paciente-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_Paciente-primary-emit-module.dia",
+    "pch" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_Paciente-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_Paciente-primary.swiftdeps"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/App_PacienteApp.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/App_PacienteApp~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/ContentView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ContentView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Item.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Item~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Models/Country.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/Country~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Models/LoteSignosVitales.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/LoteSignosVitales~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Services/HealthKitManager.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/HealthKitManager~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Services/SupabaseManager.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/SupabaseManager~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Services/TelefonoValidator.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/TelefonoValidator~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Views/AjustesView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AjustesView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Views/AutenticacionView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/AutenticacionView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Views/CompletarDatosView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/CompletarDatosView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Views/ComplicacionOnboardingView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/ComplicacionOnboardingView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Views/DashboardView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/DashboardView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Views/PermisosView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PermisosView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/App_Paciente/Views/PhoneInputView.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/PhoneInputView~partial.swiftmodule"
+  },
+  "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/ernesto/Desktop/Vital_app/App_Paciente/build/App_Paciente.build/Debug-iphonesimulator/App_Paciente.build/Objects-normal/x86_64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}
