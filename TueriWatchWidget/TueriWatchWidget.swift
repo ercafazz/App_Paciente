@@ -33,8 +33,10 @@ struct TueriWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     var entry: TueriEntry
 
-    // Teal oscuro #0D6C78
-    private let teal = Color(red: 0.051, green: 0.424, blue: 0.471)
+    // Nota: no fijamos colores propios en las accessory complications.
+    // watchOS controla el tinting según la watch face que el usuario
+    // tenga activa — el logo se rendiza en blanco / ámbar / teal / etc.
+    // automáticamente. Forzar un color rompería esa coherencia visual.
 
     var body: some View {
         switch family {
@@ -52,13 +54,24 @@ struct TueriWidgetEntryView: View {
     }
 
     // MARK: - Circular (más común en esfera)
+    //
+    // Sobre el rendering del logo en complications:
+    //   - El asset `TueriLogo` está configurado como `template-rendering-intent: template`,
+    //     así que la mayoría de watch faces lo van a tintar con el color de la face
+    //     (blanco, ámbar, teal Tuēri, etc.).
+    //   - En faces que soportan `.fullColor` (Modular Ultra, Smart Stack), el modificador
+    //     `.widgetAccentedRenderingMode(.fullColor)` que aplicamos en `accessoryRectangular`
+    //     permite renderizar el logo con sus colores originales.
+    //   - `.padding(2)` evita que el logo toque el borde del círculo, que en watchOS
+    //     queda apretado y visualmente "amputa" la marca.
 
     private var circularView: some View {
         ZStack {
             AccessoryWidgetBackground()
-            Image(systemName: "heart.text.clipboard")
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(teal)
+            Image("IoMT")
+                .resizable()
+                .scaledToFit()
+                .padding(4)
         }
     }
 
@@ -66,12 +79,27 @@ struct TueriWidgetEntryView: View {
 
     private var rectangularView: some View {
         HStack(spacing: 6) {
-            Image(systemName: "heart.text.clipboard")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(teal)
+            // Sobre el rendering del logo a todo color:
+            // `widgetAccentedRenderingMode(.fullColor)` permitiría que en
+            // faces compatibles (Modular Ultra, Smart Stack) el logo salga
+            // con sus colores originales. PERO ese símbolo solo existe en
+            // arquitectura arm64e — los Apple Watch Series 4-6 (que aún
+            // soportan watchOS 10.x) usan arm64_32, donde el símbolo NO
+            // existe. Con deployment target 10.6 Xcode compila para ambas
+            // arquitecturas; un guard `#available` no salva la compilación
+            // porque arm64_32 ni siquiera ve el símbolo.
+            //
+            // Cuando subamos el deployment target a watchOS 11.0+ y
+            // dropeemos arm64_32 (saca de soporte Series 4-6), podremos
+            // añadir `.widgetAccentedRenderingMode(.fullColor)` aquí sin
+            // tocar nada más.
+            Image("TueriLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text("Tuēri")
+                Text("IoMT")
                     .font(.system(size: 14, weight: .semibold))
                 Text("Monitoreo activo")
                     .font(.system(size: 10, weight: .regular))
@@ -83,18 +111,24 @@ struct TueriWidgetEntryView: View {
     // MARK: - Corner
 
     private var cornerView: some View {
-        Image(systemName: "heart.text.clipboard")
-            .font(.system(size: 18, weight: .medium))
-            .foregroundStyle(teal)
+        Image("TueriLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 22, height: 22)
             .widgetLabel {
-                Text("Tuēri")
+                Text("IoMT")
             }
     }
 
     // MARK: - Inline
+    //
+    // Inline NO acepta imágenes custom — solo SF Symbols a través de `systemImage:`.
+    // Es una limitación del sistema (la fila inline es una sola línea de texto en
+    // la parte superior de la face). Para esa familia mantenemos el símbolo médico
+    // para que al menos sea reconocible al lado del nombre.
 
     private var inlineView: some View {
-        Label("Tuēri", systemImage: "heart.text.clipboard")
+        Label("IoMT", systemImage: "heart.text.clipboard")
     }
 }
 
@@ -102,13 +136,13 @@ struct TueriWidgetEntryView: View {
 
 @main
 struct TueriWatchWidget: Widget {
-    let kind: String = "TueriWatchWidget"
+    let kind: String = "IoMT Widget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TueriProvider()) { entry in
             TueriWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Tuēri")
+        .configurationDisplayName("IoMT")
         .description("Monitoreo pasivo de signos vitales.")
         .supportedFamilies([
             .accessoryCircular,
